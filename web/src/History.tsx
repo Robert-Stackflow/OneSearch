@@ -206,7 +206,7 @@ export default function History({
         <Stack>
           <Text size="sm" c="dimmed">
             不保存 Authorization、Cookie、管理密钥或响应文档正文。IP
-            是直接连接地址，dev 不信任转发头。
+            来自实际连接或已配置的可信代理。
           </Text>
           <Code
             block

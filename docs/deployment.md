@@ -14,7 +14,7 @@
     bundle/                 # Linux 二进制、前端、运行镜像 Dockerfile
     SHA256SUMS
   data/
-    console.sqlite
+    onesearch.db
     encryption.key
     initial-login.txt       # 首次随机登录信息，修改密码后删除
     instances/<实例 ID>/    # 引擎数据库、dump、snapshot
