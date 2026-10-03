@@ -275,6 +275,7 @@ export default function Documents({
         <Paper withBorder>
           {!list.length ? (
             <Empty
+              embedded
               title={query === null ? '暂无文档' : '没有匹配结果'}
               description={
                 query === null

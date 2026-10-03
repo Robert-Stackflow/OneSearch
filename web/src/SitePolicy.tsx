@@ -62,6 +62,7 @@ function Editor({
         body: JSON.stringify(p),
       }),
     onSuccess: (value) => {
+      setP(value);
       cache.setQueryData(['policy', id, uid], value);
       notifySuccess('站点访问规则已保存。');
     },
@@ -98,7 +99,7 @@ function Editor({
           <div className="site-setting-body">
             <TagsInput
               label="允许的站点"
-              description="填写协议与域名，可包含端口。例如 https://blog.example.com"
+              description="填写协议与域名，可包含端口；末尾 / 会自动移除，不支持具体页面路径。"
               placeholder="输入站点后按回车"
               value={p.origins}
               onChange={(origins) => setP((v) => ({ ...v, origins }))}

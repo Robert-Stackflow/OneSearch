@@ -88,13 +88,15 @@ export function Empty({
   title,
   description,
   children,
+  embedded = false,
 }: {
   title: string;
   description?: string;
   children?: ReactNode;
+  embedded?: boolean;
 }) {
   return (
-    <Paper withBorder p="xl">
+    <Paper withBorder={!embedded} p="xl" radius={embedded ? 0 : undefined}>
       <Center mih={220}>
         <Stack align="center" gap="md">
           <SearchX size={34} strokeWidth={1.5} color="var(--os-muted)" />

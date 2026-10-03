@@ -108,9 +108,25 @@ func (s *Server) policy(id, index string) SitePolicy {
 func (s *Server) getPolicy(w http.ResponseWriter, r *http.Request) {
 	send(w, 200, s.policy(r.PathValue("id"), r.PathValue("index")))
 }
-func validOrigin(v string) bool {
+func normalizeOrigin(v string) (string, bool) {
+	v = strings.TrimSpace(v)
 	u, e := url.Parse(v)
-	return e == nil && (u.Scheme == "https" || u.Scheme == "http") && u.Host != "" && u.User == nil && u.Path == "" && u.RawQuery == "" && u.Fragment == "" && u.String() == v
+	if e != nil || (u.Scheme != "https" && u.Scheme != "http") || u.Hostname() == "" || u.User != nil || (u.Path != "" && u.Path != "/") || u.RawPath != "" || u.RawQuery != "" || u.ForceQuery || strings.Contains(v, "#") {
+		return "", false
+	}
+	u.Host = strings.ToLower(u.Host)
+	if port := u.Port(); port != "" {
+		n, e := strconv.Atoi(port)
+		if e != nil || n > 65535 {
+			return "", false
+		}
+		if (u.Scheme == "https" && port == "443") || (u.Scheme == "http" && port == "80") {
+			u.Host = strings.TrimSuffix(u.Host, ":"+port)
+		}
+	} else if strings.HasSuffix(u.Host, ":") {
+		return "", false
+	}
+	return u.Scheme + "://" + u.Host, true
 }
 func (s *Server) putPolicy(w http.ResponseWriter, r *http.Request) {
 	id, index := r.PathValue("id"), r.PathValue("index")
@@ -131,12 +147,20 @@ func (s *Server) putPolicy(w http.ResponseWriter, r *http.Request) {
 		fail(w, 400, "频率为 1–1000 次/分钟，结果数为 1–100，最多 30 个站点")
 		return
 	}
+	origins := make([]string, 0, len(p.Origins))
+	seen := map[string]bool{}
 	for _, origin := range p.Origins {
-		if !validOrigin(origin) {
+		value, ok := normalizeOrigin(origin)
+		if !ok {
 			fail(w, 400, "来源应为完整协议和域名，例如 https://example.com，不含路径")
 			return
 		}
+		if !seen[value] {
+			origins = append(origins, value)
+			seen[value] = true
+		}
 	}
+	p.Origins = origins
 	b, _ := json.Marshal(p)
 	_, e := s.store.db.Exec("INSERT INTO site_policies VALUES(?,?,?) ON CONFLICT(instance_id,index_uid) DO UPDATE SET payload=excluded.payload", id, index, string(b))
 	if e != nil {

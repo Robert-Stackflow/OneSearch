@@ -36,6 +36,8 @@
 
 `POST /api/apps/{appId}/search`。先在「站点访问」开启索引入口，并配置精确的来源（协议、域名和可选端口，不含路径）。OPTIONS 预检只对获准来源开放，允许 Authorization 和 Content-Type，不允许携带 Cookie。
 
+保存来源时接受根路径 `/`，自动移除末尾斜线、默认 80/443 端口，规范域名大小写并去重；带具体路径、查询参数或片段的地址会被拒绝。例如 `https://gh.blog.cloudchewie.com/` 保存为 `https://gh.blog.cloudchewie.com`。
+
 ```js
 const response = await fetch('https://search.cloudchewie.com/api/apps/APP_ID/search', {
   method: 'POST', credentials: 'omit',
