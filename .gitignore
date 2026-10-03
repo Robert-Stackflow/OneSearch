@@ -1,0 +1,17 @@
+data/
+dist/
+web/node_modules/
+web/dist/
+.env
+.env.*
+!.env.example
+releases/
+backups/
+*.osbackup
+*.dump
+*.db
+*.db-wal
+*.db-shm
+*.tar.gz
+*.exe
+*.log
