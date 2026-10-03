@@ -30,7 +30,7 @@
 
 ```sh
 # 源码构建方式
-docker build -t onesearch:<release> .
+docker build -t ruida/onesearch:dev .
 
 # 发布目录准备完成后，服务器运行
 cd /home/apps/one-search
@@ -78,6 +78,8 @@ ONESEARCH_ENGINE_IMAGE=getmeili/meilisearch:v1.54.3@sha256:e68913ab7d6f5b159529e
 界面支持平台与单实例 dump 加密备份。平台备份不包含引擎数据库或有效登录会话；单实例 dump 通过内部 API 创建，并从共享数据目录读取。离线解密工具见开发文档。
 
 更新时先做平台和引擎数据备份，在 `releases` 添加新的发布包，更新 `.env` 的发布号后 `docker compose up -d --build`。稳定部署标识不能更换。不要随意修改引擎镜像版本：现有实例不会自动重建或迁移，跨版本升级应先验证 dump 恢复。
+
+主镜像使用 `ruida/onesearch:dev`。发布后同时保存本机不可变标签 `ruida/onesearch:<release>`，回滚时可重新构建旧发布包或把对应不可变标签重新标记为 dev。
 
 回滚控制台时恢复旧发布号并重建主容器。数据结构变化时须配合升级前备份，不能保证任意旧版本直接读取新数据库。
 

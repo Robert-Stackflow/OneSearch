@@ -1,6 +1,6 @@
 services:
   one-search:
-    image: onesearch:${ONESEARCH_RELEASE:?Set release identifier}
+    image: ruida/onesearch:dev
     container_name: one-search
     build:
       context: ./releases/${ONESEARCH_RELEASE}/bundle
