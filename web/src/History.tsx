@@ -17,7 +17,7 @@ import {
 } from '@mantine/core';
 import { Search } from 'lucide-react';
 import { api, formatDate, type Instance, type Page } from './api';
-import { Empty, ErrorState, Loading, PageTitle } from './components';
+import { Empty, ErrorState, Loading } from './components';
 interface Entry {
   id: string;
   instanceId: string;

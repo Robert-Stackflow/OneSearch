@@ -316,7 +316,7 @@ export default function Documents({
                               }
                             />
                           </UnstyledButton>
-                          {snippets(d).map(([field, value], k) =>
+                          {snippets(d).map(([, value], k) =>
                             value ? (
                               <Text
                                 key={k}

@@ -1,7 +1,6 @@
 import {
   ActionIcon,
   Avatar,
-  Badge,
   Drawer,
   Group,
   Menu,
@@ -15,10 +14,8 @@ import {
 } from '@mantine/core';
 import { useDisclosure } from '@mantine/hooks';
 import {
-  Activity,
   ArrowUpRight,
   Archive,
-  Boxes,
   Grid2X2,
   LogOut,
   Monitor,
@@ -26,8 +23,6 @@ import {
   PanelLeft,
   ChevronsUpDown,
   UserRound,
-  Settings2,
-  ShieldCheck,
   Sun,
 } from 'lucide-react';
 import {

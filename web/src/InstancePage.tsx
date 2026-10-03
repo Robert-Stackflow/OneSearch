@@ -1,10 +1,5 @@
-import { useEffect, useState } from 'react';
-import {
-  Link,
-  useNavigate,
-  useParams,
-  useSearchParams,
-} from 'react-router-dom';
+import { Fragment, useEffect, useState } from 'react';
+import { Link, useParams, useSearchParams } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   Alert,
@@ -56,27 +51,27 @@ import {
   type TaskRef,
 } from './api';
 import { Empty, ErrorState, Loading, PageTitle, Status } from './components';
-import { Settings, Tasks, Keys, Logs } from './InstanceDetail';
+import { Settings, Tasks, Logs } from './InstanceDetail';
+import Keys from './AppKeys';
 import Documents from './Documents';
 import SitePolicy from './SitePolicy';
 import History from './History';
 import { InstanceStats, InstanceOperations } from './Analytics';
 const sections = [
   { value: 'overview', label: '统计', icon: BarChart3 },
-  { value: 'operations', label: '操作记录', icon: Activity },
-  { value: 'history', label: '搜索历史', icon: Search },
   { value: 'indexes', label: '索引', icon: Database },
   { value: 'documents', label: '文档与搜索', icon: FileJson, index: true },
   { value: 'settings', label: '搜索设置', icon: Settings2, index: true },
-  { value: 'sites', label: '站点访问', icon: ShieldCheck, index: true },
   { value: 'tasks', label: '索引任务', icon: ListChecks },
+  { value: 'sites', label: '站点访问', icon: ShieldCheck, index: true },
   { value: 'keys', label: '访问密钥', icon: KeyRound },
+  { value: 'history', label: '搜索历史', icon: Search },
+  { value: 'operations', label: '操作记录', icon: Activity },
   { value: 'logs', label: '运行日志', icon: Terminal },
 ];
 export default function InstancePage() {
   const { id = '' } = useParams();
   const cache = useQueryClient();
-  const navigate = useNavigate();
   const [params, setParams] = useSearchParams();
   const section = sections.some((x) => x.value === params.get('view'))
     ? params.get('view')!
@@ -329,14 +324,18 @@ export default function InstancePage() {
           className="settings-navigation instance-navigation"
         >
           {sections.map(({ value, label, icon: Icon }) => (
-            <NavLink
-              key={value}
-              label={label}
-              leftSection={<Icon size={18} />}
-              active={section === value}
-              onClick={() => setSection(value)}
-              className="studio-nav"
-            />
+            <Fragment key={value}>
+              {['documents', 'sites', 'history'].includes(value) && (
+                <div className="instance-navigation-divider" role="separator" />
+              )}
+              <NavLink
+                label={label}
+                leftSection={<Icon size={18} />}
+                active={section === value}
+                onClick={() => setSection(value)}
+                className="studio-nav"
+              />
+            </Fragment>
           ))}
         </Paper>
         <div className="instance-content">
@@ -491,6 +490,7 @@ export default function InstancePage() {
               ) : null}
               {section === 'keys' ? (
                 <Keys
+                  key={`${id}:${index}`}
                   id={id}
                   indexes={list.map((x) => x.uid)}
                   indexUID={index || undefined}

@@ -27,6 +27,7 @@ CREATE TABLE IF NOT EXISTS site_policies(instance_id TEXT NOT NULL,index_uid TEX
 CREATE TABLE IF NOT EXISTS search_history(id TEXT PRIMARY KEY,instance_id TEXT NOT NULL,index_uid TEXT NOT NULL,source TEXT NOT NULL,query TEXT NOT NULL,ip TEXT NOT NULL,status INTEGER NOT NULL,created_at TEXT NOT NULL,payload TEXT NOT NULL);
 CREATE INDEX IF NOT EXISTS history_date ON search_history(created_at);
 CREATE TABLE IF NOT EXISTS backups(id TEXT PRIMARY KEY,payload TEXT NOT NULL);
+CREATE TABLE IF NOT EXISTS applications(app_id TEXT PRIMARY KEY,instance_id TEXT NOT NULL,index_uid TEXT NOT NULL,name TEXT NOT NULL,created_at TEXT NOT NULL,UNIQUE(instance_id,index_uid));
 `)
 	if e != nil {
 		return e
@@ -57,6 +58,10 @@ func (s *Server) extraRoutes(m *http.ServeMux) {
 	m.HandleFunc("GET /api/history", s.history)
 	m.HandleFunc("GET /api/instances/{id}/sites/{index}", s.getPolicy)
 	m.HandleFunc("PUT /api/instances/{id}/sites/{index}", s.putPolicy)
+	m.HandleFunc("GET /api/instances/{id}/sites/{index}/application", s.application)
+	m.HandleFunc("POST /api/instances/{id}/sites/{index}/application", s.application)
+	m.HandleFunc("GET /api/instances/{id}/sites/{index}/application/chat-settings", s.appChatSettings)
+	m.HandleFunc("PATCH /api/instances/{id}/sites/{index}/application/chat-settings", s.appChatSettings)
 	m.HandleFunc("GET /api/backups", s.listBackups)
 	m.HandleFunc("POST /api/backups", s.createBackup)
 	m.HandleFunc("GET /api/backups/{backup}/download", s.downloadBackup)
@@ -262,7 +267,12 @@ func (s *Server) publicSearch(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	body, _ = json.Marshal(req)
-	i.Secret = strings.TrimPrefix(auth, "Bearer ")
+	check := &gatewayWriter{ResponseWriter: w}
+	i, _, ok := s.gatewayCredential(check, r, index, "search", true)
+	if !ok {
+		status = check.status
+		return
+	}
 	response, status, e = upstream(r.Context(), i, "POST", "/indexes/"+index+"/search", bytes.NewReader(body))
 	if e != nil {
 		status = 502

@@ -1,9 +1,8 @@
 import { useQuery } from '@tanstack/react-query';
-import { Alert, Badge, Code, Paper, Stack, Table, Text } from '@mantine/core';
+import { Alert, Code, Paper, Stack, Table, Text } from '@mantine/core';
 import {
   api,
   formatDate,
-  type Operation,
   type System,
   type Instance,
   actionLabels,
@@ -30,6 +29,10 @@ const auditLabels: Record<string, string> = {
   'backup.auto': '执行自动备份',
   'account.update': '修改账户资料',
   'account.avatar': '更新账户头像',
+  'documents.publish': '同步网站文档',
+  'application.create': '创建应用',
+  'application.settings.update': '更新应用搜索设置',
+  'application.chat.update': '配置应用模型服务',
 };
 function auditAction(action: string) {
   if (auditLabels[action] || actionLabels[action])

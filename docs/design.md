@@ -1,7 +1,6 @@
 # OneSearch 系统设计
 
-> 部署更新：服务器 Docker 运行时、同端口前端服务、HTTPS Cookie 和可信代理已实现，配置与当前限制见 [服务器部署](deployment.md)。以下早期调研与演进方案中未完成项目，以部署文档为准。
-版本：dev 0.1，2026-10-03。前端 Moment 风格，后端 Go，最终服务器 Docker。本文中“已实现”指当前 dev；Docker、线上恢复及多用户模块是后续设计。
+版本：0.1，2026-10-03。前端参考 Moment，后端 Go；本地使用真实原生进程，服务器使用 Docker。接口契约见 [API 文档](api.md)，部署与限制见 [服务器部署](deployment.md)。
 
 ## 1. 架构与信任边界
 
@@ -15,7 +14,7 @@ flowchart LR
   API --> Runtime[运行时适配层]
   API -->|服务器保存的管理凭据| Engine
   Runtime --> Native[dev 原生进程]
-  Runtime -.未来.-> Docker[服务器 Docker Engine]
+  Runtime --> Docker[服务器 Docker Engine]
   API --> Backup[加密备份文件]
 ```
 
@@ -176,24 +175,22 @@ TOTP 秘密静态加密，设置暂存 5 分钟；确认成功才启用。时间
 
 dump 恢复使用全新数据库目录与 `--import-dump`，待重建完成、验证文档/搜索/密钥权限后接入。不能把 dump 当作平台数据库。在线一键恢复、原子切流、快照和定时异地副本目前为后续阶段。
 
-当前备份整份归档在内存完成，只适合小型 dev 数据；服务器阶段需流式加密、容量检查、进度和限流，避免大备份耗尽内存。
+当前备份整份归档在内存完成，只适合小型实例数据；服务器阶段需流式加密、容量检查、进度和限流，避免大备份耗尽内存。
 
-## 10. Docker runtime 后续设计
+## 10. Docker 运行时
 
-引入 Runtime 接口：Version、Create、Start、Stop、Inspect、Logs、Backup、RemoveMetadata。Native 与 Docker 实现共用领域操作，业务接口不接收 Docker 原始参数。
+Native 与 Docker 实现共用 EngineRuntime 接口与生命周期业务；服务器通过固定 Engine API、镜像、内部网络和平台生成的数据挂载运行独立实例。容器名和所有权标签必须匹配才允许操作，不接受任意命令、镜像、挂载目录或宿主端口。控制台重启不停止引擎；desiredState 为 running 的托管实例会恢复，用户停止和归档的实例保持停止。
 
-Docker 参数由后端生成：固定白名单镜像 `getmeili/meilisearch:<version>`，平台生成容器名/labels/卷名，独立网络，内存与 CPU 硬限制，索引预算作为另一参数。不接收任意 bind mount、命令、privileged 或 host network。镜像来源参见 [官方 Docker 部署](https://www.meilisearch.com/docs/resources/self_hosting/getting_started/docker)。
+3013 只绑定宿主回环；HTTPS 反向代理访问控制台和 App 网关，原生引擎端口不对外开放。可信代理只允许部署网关地址，Cookie 与 WebAuthn 使用正式域名。具体配置见部署文档。控制台拥有 Docker socket，适用于可信管理员，不构成多租户宿主隔离。
 
-控制台访问 Docker socket 具有高权限，部署时应限定到专门的控制服务或代理，并最小化宿主机暴露。启动后定期 Inspect，区分 desiredState 和 observedState，容器 ID 与平台标签同时匹配。持久化操作幂等键、失败重试策略和对账，避免重复容器或误删除。
+## 11. 网站应用
 
-生产实例归档与删除分离：归档保留卷；删除需要明确显示影响、可恢复期和备份状态。当前不提供硬删除实例卷的按钮。
+一个 App ID 绑定一个实例中的索引。Search、Admin、Read-Only Admin、Chat 预设密钥明确列出 actions、只绑定该索引；公开网关拒绝通配符、实例主密钥及跨索引权限。每次请求重新验证密钥元数据，失效与撤销即时生效。所有上游业务请求使用调用方 Key，不提升为主密钥。
 
-## 11. 开发到生产的阶段
+Admin 只提供当前应用文档与设置操作；Read-Only 可读取当前索引、文档、设置、任务和统计；Chat 固定使用 App ID 命名的工作区，管理员在登录控制台配置模型服务，响应移除模型服务密钥。搜索与对话共享站点来源限制；发布及只读管理只接受服务器请求。
 
-1. 当前 dev：原生实例、实际索引、网关、账户安全、备份、Moment 风格管理界面。
-2. Docker：容器适配、资源限制、状态协调、内部网络、Linux 文件权限、健康监控。
-3. 生产安全：HTTPS/Secure Cookie、正式 RP、可信代理、网关密钥强化、多用户角色、完整失败审计。
-4. 运维：计划备份、异地存储、容量与保留、恢复演练、版本升级及回滚。
-5. 扩展：自动发布同步、抓取器、索引切换、请求聚合与告警。
+发布流程使用稳定文档 id，先更新文档、等待每个异步任务成功，再删除已下线文档。上传失败不触发清理。Blog 前端只包含 App ID 与 Search Key，Admin Key 仅存 GitHub Secrets；同步成功后再发布页面。
 
-上线条件不能只看界面：必须验证 Docker 生命周期、反向代理 IP、HTTPS WebAuthn、备份恢复和受限网络端口。当前 dev 不应直接对公网开放。
+## 12. 后续范围
+
+多用户角色、跨节点配额、定时异地备份、流式大容量备份、在线恢复、引擎版本升级编排、抓取器和索引原子切换尚未实现。现有自动备份为每日单机任务，包含每个运行中的托管实例；真实 Chat 模型调用需配置提供商凭据。生产验证覆盖 Docker 生命周期、受限端口、代理链、会话、应用权限及备份；外部模型费用和可用性由提供商决定。

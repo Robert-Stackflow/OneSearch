@@ -588,6 +588,11 @@ input:-webkit-autofill {
 .instance-navigation .studio-nav {
   height: 46px;
 }
+.instance-navigation-divider {
+  height: 0;
+  margin: 10px 12px;
+  border-top: 1px solid var(--os-border);
+}
 .instance-content .mantine-Title-root {
   font-size: 19px;
 }
@@ -604,6 +609,14 @@ input:-webkit-autofill {
   }
   .instance-navigation .studio-nav {
     min-width: 126px;
+  }
+  .instance-navigation-divider {
+    width: 0;
+    height: 26px;
+    margin: 10px 6px;
+    border-top: 0;
+    border-left: 1px solid var(--os-border);
+    flex: 0 0 0;
   }
 }
 

@@ -15,6 +15,10 @@ func TestSearchFormattingPaginationAndCap(t *testing.T) {
 	var received map[string]any
 	response := `{"hits":[{"id":"a","_formatted":{"title":"<em>搜索</em>"},"_matchesPosition":{"title":[{"start":0,"length":6}]}}],"totalHits":7,"totalPages":3,"page":2,"hitsPerPage":3}`
 	engine := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if strings.HasPrefix(r.URL.Path, "/keys/") {
+			w.Write([]byte(`{"key":"scoped-search-key","uid":"test-key","actions":["search"],"indexes":["blog"],"expiresAt":null}`))
+			return
+		}
 		json.NewDecoder(r.Body).Decode(&received)
 		w.Header().Set("Content-Type", "application/json")
 		w.Write([]byte(response))

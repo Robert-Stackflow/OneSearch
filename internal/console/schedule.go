@@ -160,7 +160,7 @@ func (s *Server) runScheduledBackup(at time.Time) {
 		if i.ID != "" {
 			kind = "dump"
 		}
-		b := Backup{ID: randomID(), Kind: kind, InstanceID: i.ID, Status: "running", CreatedAt: now(), Automatic: true}
+		b := Backup{ID: randomID(), Kind: kind, InstanceID: i.ID, Status: "running", CreatedAt: time.Now().UTC().Format(time.RFC3339Nano), Automatic: true}
 		s.saveBackup(b)
 		s.store.Audit("system", "backup.auto", b.ID)
 		s.performBackup(b, i, password)
@@ -171,7 +171,7 @@ func (s *Server) pruneAutomatic(keep int) {
 	if keep < 1 {
 		return
 	}
-	rows, e := s.store.db.Query("SELECT payload FROM backups")
+	rows, e := s.store.db.Query("SELECT payload FROM backups ORDER BY rowid DESC")
 	if e != nil {
 		return
 	}
@@ -189,11 +189,10 @@ func (s *Server) pruneAutomatic(keep int) {
 	}
 	rows.Close()
 	for _, list := range groups {
-		sort.Slice(list, func(i, j int) bool {
-			if list[i].CreatedAt == list[j].CreatedAt {
-				return list[i].ID > list[j].ID
-			}
-			return list[i].CreatedAt > list[j].CreatedAt
+		sort.SliceStable(list, func(i, j int) bool {
+			first, _ := time.Parse(time.RFC3339Nano, list[i].CreatedAt)
+			second, _ := time.Parse(time.RFC3339Nano, list[j].CreatedAt)
+			return first.After(second)
 		})
 		for n, b := range list {
 			if n < keep || !engineIDPattern.MatchString(b.ID) {

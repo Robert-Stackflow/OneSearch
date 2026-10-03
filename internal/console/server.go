@@ -236,6 +236,11 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("POST /api/auth/passkey/finish", s.passkeyLoginFinish)
 	mux.HandleFunc("POST /api/search/{id}/{index}", s.publicSearch)
 	mux.HandleFunc("OPTIONS /api/search/{id}/{index}", s.publicSearch)
+	mux.HandleFunc("GET /api/publish/{id}/{index}/documents", s.publish)
+	mux.HandleFunc("POST /api/publish/{id}/{index}/documents", s.publish)
+	mux.HandleFunc("POST /api/publish/{id}/{index}/documents/delete-batch", s.publish)
+	mux.HandleFunc("GET /api/publish/{id}/{index}/tasks/{task}", s.publish)
+	s.appRoutes(mux)
 	protected := http.NewServeMux()
 	protected.HandleFunc("GET /api/auth/me", func(w http.ResponseWriter, r *http.Request) {
 		send(w, 200, s.accountInfo(r.Context().Value(actorKey{}).(string)))
@@ -274,7 +279,7 @@ func (s *Server) Handler() http.Handler {
 		w.Header().Set("X-Content-Type-Options", "nosniff")
 		w.Header().Set("X-Frame-Options", "DENY")
 		w.Header().Set("Referrer-Policy", "no-referrer")
-		if strings.HasPrefix(r.URL.Path, "/api/search/") {
+		if strings.HasPrefix(r.URL.Path, "/api/search/") || strings.HasPrefix(r.URL.Path, "/api/publish/") || strings.HasPrefix(r.URL.Path, "/api/apps/") {
 			mux.ServeHTTP(w, r)
 			return
 		}

@@ -8,10 +8,8 @@ import {
 } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
-  Alert,
   Button,
   Divider,
-  Group,
   Paper,
   PasswordInput,
   Stack,
@@ -31,7 +29,6 @@ const Instances = lazy(() => import('./Instances'));
 const Detail = lazy(() => import('./InstancePage'));
 const Activity = lazy(() => import('./Activity'));
 const Security = lazy(() => import('./Security'));
-const History = lazy(() => import('./History'));
 const Backups = lazy(() => import('./Backups'));
 function Protected() {
   const q = useQuery({

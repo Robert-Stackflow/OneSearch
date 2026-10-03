@@ -1,52 +1,22 @@
 import { Toggle as Switch } from './Toggle';
 import { useState, useRef, useLayoutEffect } from 'react';
-import SitePolicy from './SitePolicy';
-import { Link, useNavigate, useParams } from 'react-router-dom';
+
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
-  ActionIcon,
-  Alert,
-  Badge,
   Button,
   Code,
-  CopyButton,
-  FileInput,
   Group,
   Modal,
-  MultiSelect,
   Paper,
-  PasswordInput,
   ScrollArea,
-  Select,
-  SimpleGrid,
   Stack,
   Table,
-  Tabs,
   TagsInput,
   Text,
-  TextInput,
   Textarea,
   Title,
-  Tooltip,
 } from '@mantine/core';
-import {
-  ArrowLeft,
-  Check,
-  Copy,
-  Database,
-  FileJson,
-  KeyRound,
-  ListChecks,
-  Play,
-  Plus,
-  RotateCw,
-  Search,
-  Settings2,
-  Square,
-  Terminal,
-  Archive,
-  Trash2,
-} from 'lucide-react';
+
 import {
   api,
   engine,
@@ -54,14 +24,11 @@ import {
   notifyError,
   notifySuccess,
   waitTask,
-  type APIKey,
-  type Index,
-  type Instance,
   type Page,
   type Task,
   type TaskRef,
 } from './api';
-import { Empty, ErrorState, Loading, PageTitle, Status } from './components';
+import { ErrorState, Loading, Status } from './components';
 
 export function Settings({
   id,
@@ -409,251 +376,6 @@ export function Tasks({ id, indexUID }: { id: string; indexUID?: string }) {
         </Table>
       </Table.ScrollContainer>
     </Paper>
-  );
-}
-export function Keys({
-  id,
-  indexes,
-  indexUID,
-}: {
-  id: string;
-  indexes: string[];
-  indexUID?: string;
-}) {
-  const [opened, setOpened] = useState(false);
-  const [name, setName] = useState('');
-  const [scope, setScope] = useState<string[]>(indexUID ? [indexUID] : []);
-  const [preset, setPreset] = useState('search');
-  const [expiry, setExpiry] = useState('30');
-  const [created, setCreated] = useState('');
-  const [remove, setRemove] = useState<APIKey | null>(null);
-  const cache = useQueryClient();
-  const q = useQuery({
-    queryKey: ['keys', id],
-    queryFn: () => engine<Page<APIKey>>(id, 'keys?limit=100'),
-  });
-  const create = useMutation({
-    mutationFn: () =>
-      engine<APIKey>(id, 'keys', {
-        method: 'POST',
-        body: JSON.stringify({
-          name,
-          actions:
-            preset === 'search'
-              ? ['search']
-              : [
-                  'documents.add',
-                  'documents.delete',
-                  'indexes.get',
-                  'settings.get',
-                  'settings.update',
-                  'tasks.get',
-                ],
-          indexes: scope,
-          expiresAt:
-            expiry === 'never'
-              ? null
-              : new Date(Date.now() + Number(expiry) * 86400000).toISOString(),
-        }),
-      }),
-    onSuccess: (r) => {
-      setOpened(false);
-      setCreated(r.key || '');
-      setName('');
-      setScope([]);
-      cache.invalidateQueries({ queryKey: ['keys', id] });
-    },
-    onError: notifyError,
-  });
-  const del = useMutation({
-    mutationFn: () => engine(id, `keys/${remove!.uid}`, { method: 'DELETE' }),
-    onSuccess: () => {
-      setRemove(null);
-      cache.invalidateQueries({ queryKey: ['keys', id] });
-      notifySuccess('密钥已撤销。');
-    },
-    onError: notifyError,
-  });
-  return (
-    <>
-      <Group justify="space-between" mb="lg">
-        <div>
-          <Title order={3}>访问密钥</Title>
-          <Text size="sm" c="dimmed" mt={6}>
-            按网站索引分配权限，列表不返回已有密钥的值。
-          </Text>
-        </div>
-        <Button
-          leftSection={<Plus size={16} />}
-          onClick={() => setOpened(true)}
-        >
-          创建密钥
-        </Button>
-      </Group>
-      {q.isPending ? (
-        <Loading />
-      ) : q.error ? (
-        <ErrorState error={q.error} retry={q.refetch} />
-      ) : (
-        <Paper withBorder>
-          <Table.ScrollContainer minWidth={600}>
-            <Table horizontalSpacing="xl" verticalSpacing="lg">
-              <Table.Thead>
-                <Table.Tr>
-                  <Table.Th>名称</Table.Th>
-                  <Table.Th>索引权限</Table.Th>
-                  <Table.Th>操作权限</Table.Th>
-                  <Table.Th>有效期</Table.Th>
-                  <Table.Th />
-                </Table.Tr>
-              </Table.Thead>
-              <Table.Tbody>
-                {q.data.results
-                  .filter(
-                    (k) =>
-                      !indexUID ||
-                      k.indexes.includes(indexUID) ||
-                      k.indexes.includes('*'),
-                  )
-                  .map((k) => (
-                    <Table.Tr key={k.uid}>
-                      <Table.Td>
-                        <Text size="sm" fw={600}>
-                          {k.name || '未命名密钥'}
-                        </Text>
-                      </Table.Td>
-                      <Table.Td>
-                        {k.indexes.map((x) => (
-                          <Badge key={x} variant="light" size="xs" mr={4}>
-                            {x}
-                          </Badge>
-                        ))}
-                      </Table.Td>
-                      <Table.Td>
-                        <Text size="xs" c="dimmed" maw={220}>
-                          {k.actions.join(', ')}
-                        </Text>
-                      </Table.Td>
-                      <Table.Td>
-                        <Text size="xs">
-                          {k.expiresAt ? formatDate(k.expiresAt) : '永久'}
-                        </Text>
-                      </Table.Td>
-                      <Table.Td>
-                        <ActionIcon
-                          variant="subtle"
-                          color="gray"
-                          aria-label={`撤销密钥 ${k.name}`}
-                          onClick={() => setRemove(k)}
-                        >
-                          <Trash2 size={16} />
-                        </ActionIcon>
-                      </Table.Td>
-                    </Table.Tr>
-                  ))}
-              </Table.Tbody>
-            </Table>
-          </Table.ScrollContainer>
-        </Paper>
-      )}
-      <Modal
-        opened={opened}
-        onClose={() => setOpened(false)}
-        title="创建访问密钥"
-        centered
-      >
-        <Stack>
-          <TextInput
-            label="名称"
-            value={name}
-            onChange={(e) => setName(e.currentTarget.value)}
-            placeholder="博客前端搜索"
-          />
-          <Select
-            label="用途"
-            value={preset}
-            onChange={(v) => setPreset(v || 'search')}
-            data={[
-              { value: 'search', label: '网站搜索（只读）' },
-              { value: 'indexing', label: '发布流程（更新索引）' },
-            ]}
-          />
-          <MultiSelect
-            label="允许访问的索引"
-            required
-            data={indexes}
-            value={scope}
-            onChange={setScope}
-            placeholder="选择网站的索引"
-          />
-          <Select
-            label="有效期"
-            value={expiry}
-            onChange={(v) => setExpiry(v || '30')}
-            data={[
-              { value: '7', label: '7 天' },
-              { value: '30', label: '30 天' },
-              { value: '90', label: '90 天' },
-              { value: 'never', label: '永久' },
-            ]}
-          />
-          <Group justify="flex-end">
-            <Button
-              loading={create.isPending}
-              disabled={!name.trim() || !scope.length}
-              onClick={() => create.mutate()}
-            >
-              创建密钥
-            </Button>
-          </Group>
-        </Stack>
-      </Modal>
-      <Modal
-        opened={!!created}
-        onClose={() => setCreated('')}
-        title="保存新密钥"
-        centered
-      >
-        <Stack>
-          <Alert color="blue">
-            新密钥只在此显示一次。请现在保存到网站或发布流程的配置中。
-          </Alert>
-          <Code block style={{ overflowWrap: 'anywhere' }}>
-            {created}
-          </Code>
-          <CopyButton value={created}>
-            {({ copied, copy }) => (
-              <Button
-                leftSection={copied ? <Check size={16} /> : <Copy size={16} />}
-                onClick={copy}
-              >
-                {copied ? '已复制' : '复制密钥'}
-              </Button>
-            )}
-          </CopyButton>
-        </Stack>
-      </Modal>
-      <Modal
-        opened={!!remove}
-        onClose={() => setRemove(null)}
-        title="撤销密钥"
-        centered
-      >
-        <Text size="sm">使用此密钥的网站或发布流程将立即失去访问权限。</Text>
-        <Group justify="flex-end" mt="xl">
-          <Button variant="default" onClick={() => setRemove(null)}>
-            取消
-          </Button>
-          <Button
-            color="red"
-            loading={del.isPending}
-            onClick={() => del.mutate()}
-          >
-            撤销密钥
-          </Button>
-        </Group>
-      </Modal>
-    </>
   );
 }
 export function Logs({ id }: { id: string }) {

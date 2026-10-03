@@ -16,7 +16,7 @@ import {
   TextInput,
   Title,
 } from '@mantine/core';
-import { KeyRound, Plus, ShieldCheck, Trash2 } from 'lucide-react';
+import { KeyRound, Plus, ShieldCheck } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
 import { ApiError, api, formatDate, notifyError, notifySuccess } from './api';
 import { registerPasskey } from './passkeys';

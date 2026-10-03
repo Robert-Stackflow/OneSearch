@@ -244,10 +244,6 @@ func zipFiles(files map[string][]byte) ([]byte, error) {
 	}
 	return buf.Bytes(), nil
 }
-func (s *Server) dumpArchive(i Instance) ([]byte, error) {
-	b, _, e := s.dumpArchiveFile(i)
-	return b, e
-}
 func (s *Server) dumpArchiveFile(i Instance) ([]byte, string, error) {
 	if !engineIDPattern.MatchString(i.ID) {
 		return nil, "", errors.New("实例标识无效")

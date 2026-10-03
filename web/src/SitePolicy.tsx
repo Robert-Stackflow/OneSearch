@@ -45,7 +45,16 @@ function Editor({
 }) {
   const cache = useQueryClient();
   const [p, setP] = useState(initial);
-  const endpoint = `${window.location.origin}/api/search/${id}/${uid}`;
+  const app = useQuery({
+    queryKey: ['application', id, uid],
+    queryFn: () =>
+      api<{ appId: string } | null>(
+        `/instances/${id}/sites/${uid}/application`,
+      ),
+  });
+  const endpoint = app.data
+    ? `${window.location.origin}/api/apps/${app.data.appId}/search`
+    : `${window.location.origin}/api/search/${id}/${uid}`;
   const save = useMutation({
     mutationFn: () =>
       api<Policy>(`/instances/${id}/sites/${uid}`, {

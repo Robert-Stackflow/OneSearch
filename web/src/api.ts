@@ -17,7 +17,18 @@ export async function api<T>(path: string, init: RequestInit = {}): Promise<T> {
     credentials: 'same-origin',
   });
   if (response.status === 204) return null as T;
-  const body = await response.json();
+  const raw = await response.text();
+  let body;
+  try {
+    body = JSON.parse(raw);
+  } catch {
+    throw new ApiError(
+      response.status === 404
+        ? '后台尚不支持此接口，请更新后台后重试'
+        : '后台返回了无效响应，请稍后重试',
+      response.status,
+    );
+  }
   if (!response.ok)
     throw new ApiError(body.error?.message || '请求失败', response.status);
   return body.data as T;

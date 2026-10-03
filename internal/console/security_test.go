@@ -11,6 +11,7 @@ import (
 	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 )
@@ -107,6 +108,10 @@ func TestChallengeBindingAndConsumption(t *testing.T) {
 func TestPublicSearchAndHistory(t *testing.T) {
 	s := testServer(t)
 	engine := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if strings.HasPrefix(r.URL.Path, "/keys/") {
+			w.Write([]byte(`{"key":"scoped-search-key","uid":"test-key","actions":["search"],"indexes":["blog"],"expiresAt":null}`))
+			return
+		}
 		if r.Header.Get("Authorization") != "Bearer scoped-search-key" {
 			w.WriteHeader(401)
 			return
