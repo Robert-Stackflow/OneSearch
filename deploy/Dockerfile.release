@@ -1,0 +1,9 @@
+FROM alpine:3.22
+RUN apk add --no-cache ca-certificates tzdata
+WORKDIR /app
+COPY bin/ /app/
+COPY web/ /app/web/
+ENV ONESEARCH_MODE=production ONESEARCH_ADDR=0.0.0.0:3013 \
+    ONESEARCH_DATA_DIR=/app/data ONESEARCH_STATIC_DIR=/app/web
+EXPOSE 3013
+ENTRYPOINT ["/app/onesearch"]

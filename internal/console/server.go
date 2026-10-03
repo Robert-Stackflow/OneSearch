@@ -12,6 +12,7 @@ import (
 	"fmt"
 	"golang.org/x/crypto/bcrypt"
 	"io"
+	"net"
 	"net/http"
 	"net/url"
 	"os"
@@ -22,10 +23,15 @@ import (
 	"time"
 )
 
-type Config struct{ DataDir, Binary, Origin, AdminUser, AdminPassword, EncryptionKey string }
+type Config struct {
+	DataDir, Binary, Origin, AdminUser, AdminPassword, EncryptionKey         string
+	Mode, StaticDir                                                          string
+	DockerSocket, DockerImage, DockerNetwork, DockerOwner, DockerHostDataDir string
+	TrustedProxies                                                           []string
+}
 type Server struct {
 	store         *Store
-	native        *NativeRuntime
+	native        EngineRuntime
 	cfg           Config
 	queue         chan Operation
 	done          chan struct{}
@@ -41,6 +47,26 @@ type actorKey struct{}
 var uidPattern = regexp.MustCompile(`^[A-Za-z0-9_-]{1,128}$`)
 
 func New(cfg Config) (*Server, error) {
+	if cfg.Mode == "" {
+		cfg.Mode = "dev"
+	}
+	if cfg.Mode != "dev" && cfg.Mode != "production" {
+		return nil, errors.New("不支持的运行模式")
+	}
+	for _, cidr := range cfg.TrustedProxies {
+		if _, _, e := net.ParseCIDR(cidr); e != nil {
+			return nil, errors.New("代理信任列表需要有效 CIDR")
+		}
+	}
+	if cfg.Mode == "production" {
+		u, e := url.Parse(cfg.Origin)
+		if e != nil || u.Scheme != "https" || u.Host == "" || u.User != nil || u.Path != "" || u.RawQuery != "" || u.Fragment != "" {
+			return nil, errors.New("生产环境需要完整 HTTPS Origin，不包含路径")
+		}
+		if _, e = os.Stat(filepath.Join(cfg.StaticDir, "index.html")); e != nil {
+			return nil, errors.New("未找到前端构建文件")
+		}
+	}
 	store, err := OpenStore(cfg.DataDir, cfg.EncryptionKey)
 	if err != nil {
 		return nil, err
@@ -53,6 +79,14 @@ func New(cfg Config) (*Server, error) {
 	}
 	ctx, cancel := context.WithCancel(context.Background())
 	s := &Server{store: store, native: NewRuntime(cfg.Binary, cfg.DataDir), cfg: cfg, queue: make(chan Operation, 100), done: make(chan struct{}), ctx: ctx, cancel: cancel, loginFailures: map[string][]time.Time{}}
+	if cfg.Mode == "production" {
+		s.native, err = NewDockerRuntime(cfg)
+		if err != nil {
+			store.Close()
+			cancel()
+			return nil, err
+		}
+	}
 	if err = s.extraSchema(); err != nil {
 		store.Close()
 		cancel()
@@ -108,6 +142,21 @@ func New(cfg Config) (*Server, error) {
 	}
 	s.work.Add(1)
 	go s.worker()
+	if cfg.Mode == "production" {
+		for _, i := range list {
+			full, e := store.GetInstance(i.ID)
+			if e == nil && managed(full) && full.Status != "archived" && full.Status != "running" && full.DesiredState == "running" {
+				full.Status = "starting"
+				if e = store.SaveInstance(full); e == nil {
+					_, e = s.enqueue(full, "start")
+				}
+				if e != nil {
+					s.Close()
+					return nil, e
+				}
+			}
+		}
+	}
 	return s, nil
 }
 func (s *Server) bootstrap() error {
@@ -125,7 +174,11 @@ func (s *Server) bootstrap() error {
 			return err
 		}
 		password = hex.EncodeToString(b)
-		if err := os.WriteFile(filepath.Join(s.cfg.DataDir, "dev-login.txt"), []byte("用户名: "+s.cfg.AdminUser+"\n密码: "+password+"\n仅用于本地开发。首次生成后保留，不会因重启改变。\n"), 0600); err != nil {
+		file := "dev-login.txt"
+		if s.cfg.Mode == "production" {
+			file = "initial-login.txt"
+		}
+		if err := os.WriteFile(filepath.Join(s.cfg.DataDir, file), []byte("用户名: "+s.cfg.AdminUser+"\n密码: "+password+"\n首次生成后保留，不会因重启改变。登录后请修改密码。\n"), 0600); err != nil {
 			return err
 		}
 	}
@@ -168,7 +221,7 @@ func hashToken(t string) string { b := sha256.Sum256([]byte(t)); return hex.Enco
 func (s *Server) Handler() http.Handler {
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /api/health", func(w http.ResponseWriter, r *http.Request) {
-		send(w, 200, map[string]string{"status": "ok", "mode": "dev"})
+		send(w, 200, map[string]string{"status": "ok", "mode": s.cfg.Mode})
 	})
 	mux.HandleFunc("POST /api/auth/login", s.login)
 	mux.HandleFunc("POST /api/auth/passkey/begin", s.passkeyLoginBegin)
@@ -177,7 +230,7 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("OPTIONS /api/search/{id}/{index}", s.publicSearch)
 	protected := http.NewServeMux()
 	protected.HandleFunc("GET /api/auth/me", func(w http.ResponseWriter, r *http.Request) {
-		send(w, 200, map[string]any{"username": r.Context().Value(actorKey{}), "mode": "dev"})
+		send(w, 200, map[string]any{"username": r.Context().Value(actorKey{}), "mode": s.cfg.Mode})
 	})
 	protected.HandleFunc("POST /api/auth/logout", s.logout)
 	s.extraRoutes(protected)
@@ -205,7 +258,11 @@ func (s *Server) Handler() http.Handler {
 	protected.HandleFunc("GET /api/instances/{id}/logs", s.logs)
 	protected.HandleFunc("/api/instances/{id}/engine/{rest...}", s.engine)
 	mux.Handle("/api/", s.auth(protected))
+	if s.cfg.StaticDir != "" {
+		mux.Handle("/", spaHandler(s.cfg.StaticDir))
+	}
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		r = s.withClientIP(r)
 		w.Header().Set("X-Content-Type-Options", "nosniff")
 		w.Header().Set("X-Frame-Options", "DENY")
 		w.Header().Set("Referrer-Policy", "no-referrer")
@@ -222,7 +279,7 @@ func (s *Server) Handler() http.Handler {
 				fail(w, 403, "缺少请求校验标识")
 				return
 			}
-			if origin := r.Header.Get("Origin"); origin != "" && origin != s.cfg.Origin && origin != "http://127.0.0.1:7800" {
+			if origin := r.Header.Get("Origin"); origin != "" && origin != s.cfg.Origin && !(s.cfg.Mode == "dev" && origin == "http://127.0.0.1:7800") {
 				fail(w, 403, "请求来源未被允许")
 				return
 			}
@@ -257,11 +314,8 @@ func (s *Server) login(w http.ResponseWriter, r *http.Request) {
 		fail(w, 400, err.Error())
 		return
 	}
-	// Rate limiting is based on the actual peer, never arbitrary forwarded headers.
-	peer := r.RemoteAddr
-	if pos := strings.LastIndex(peer, ":"); pos >= 0 {
-		peer = peer[:pos]
-	}
+	// Middleware accepts forwarded addresses only from explicitly trusted peers.
+	peer := peerIP(r)
 	s.loginMu.Lock()
 	ts := []time.Time{}
 	for _, t := range s.loginFailures[peer] {
@@ -294,20 +348,24 @@ func (s *Server) logout(w http.ResponseWriter, r *http.Request) {
 	if c, e := r.Cookie("onesearch_session"); e == nil {
 		s.store.db.Exec("DELETE FROM sessions WHERE token_hash=?", hashToken(c.Value))
 	}
-	http.SetCookie(w, &http.Cookie{Name: "onesearch_session", Value: "", Path: "/", HttpOnly: true, SameSite: http.SameSiteStrictMode, MaxAge: -1})
+	http.SetCookie(w, &http.Cookie{Name: "onesearch_session", Value: "", Path: "/", HttpOnly: true, Secure: s.cfg.Mode == "production", SameSite: http.SameSiteStrictMode, MaxAge: -1})
 	send(w, 200, map[string]bool{"ok": true})
 }
 func (s *Server) system(w http.ResponseWriter, r *http.Request) {
 	ctx, c := context.WithTimeout(r.Context(), 5*time.Second)
 	defer c()
 	v, e := s.native.Version(ctx)
-	send(w, 200, map[string]any{"mode": "dev", "runtime": "native", "runtimeAvailable": e == nil, "engineVersion": v, "dockerAvailable": false, "origin": s.cfg.Origin})
+	runtime := "native"
+	if s.cfg.Mode == "production" {
+		runtime = "docker"
+	}
+	send(w, 200, map[string]any{"mode": s.cfg.Mode, "runtime": runtime, "runtimeAvailable": e == nil, "engineVersion": v, "dockerAvailable": s.cfg.Mode == "production" && e == nil, "origin": s.cfg.Origin})
 }
 func publicInstance(i Instance, owned bool) map[string]any {
 	b, _ := json.Marshal(i)
 	out := map[string]any{}
 	json.Unmarshal(b, &out)
-	out["canControl"] = i.Provider == "native" && (i.Status != "running" || owned)
+	out["canControl"] = managed(i) && (i.Status != "running" || owned)
 	return out
 }
 func (s *Server) listInstances(w http.ResponseWriter, r *http.Request) {
@@ -359,7 +417,15 @@ func (s *Server) createInstance(w http.ResponseWriter, r *http.Request) {
 	s.createMu.Lock()
 	defer s.createMu.Unlock()
 	i := Instance{ID: randomID(), Name: req.Name, Description: req.Description, Provider: req.Provider, CreatedAt: now(), DesiredState: "running"}
+	// Native creation is retained as the dev client's managed-engine choice.
+	if s.cfg.Mode == "production" && i.Provider == "native" {
+		i.Provider = "docker"
+	}
 	if i.Provider == "external" {
+		if s.cfg.Mode == "production" {
+			fail(w, 400, "服务器版本暂不接入外部实例，请创建托管实例")
+			return
+		}
 		u, e := url.Parse(req.Host)
 		if e != nil || u.Scheme != "http" || u.Hostname() != "127.0.0.1" || u.User != nil || u.RawQuery != "" || u.Fragment != "" || (u.Path != "" && u.Path != "/") {
 			fail(w, 400, "dev 模式仅允许接入 http://127.0.0.1:端口，地址不可包含路径或凭据")
@@ -382,27 +448,32 @@ func (s *Server) createInstance(w http.ResponseWriter, r *http.Request) {
 		}
 		i.Version = v
 		i.Status = "running"
-	} else if i.Provider == "native" {
+	} else if managed(i) && ((s.cfg.Mode == "dev" && i.Provider == "native") || (s.cfg.Mode == "production" && i.Provider == "docker")) {
 		if req.MemoryMB < 128 || req.MemoryMB > 8192 || req.Threads < 1 || req.Threads > 16 {
 			fail(w, 400, "索引内存预算为 128–8192 MiB，索引线程为 1–16")
 			return
 		}
 		if _, e := s.native.Version(r.Context()); e != nil {
-			fail(w, 503, "尚未配置本地 Meilisearch 可执行文件")
+			fail(w, 503, "搜索运行时未就绪，请检查服务端配置")
 			return
 		}
-		list, e := s.store.Instances()
-		if e != nil {
-			fail(w, 500, "无法分配端口")
-			return
+		if i.Provider == "docker" {
+			i.Port = 7700
+			i.Host = "http://" + engineName(i.ID) + ":7700"
+		} else {
+			list, e := s.store.Instances()
+			if e != nil {
+				fail(w, 500, "无法分配端口")
+				return
+			}
+			port, e := freePort(list)
+			if e != nil {
+				fail(w, 409, e.Error())
+				return
+			}
+			i.Port = port
+			i.Host = fmt.Sprintf("http://127.0.0.1:%d", port)
 		}
-		port, e := freePort(list)
-		if e != nil {
-			fail(w, 409, e.Error())
-			return
-		}
-		i.Port = port
-		i.Host = fmt.Sprintf("http://127.0.0.1:%d", port)
 		i.Secret = randomID() + randomID()
 		i.MemoryMB = req.MemoryMB
 		i.Threads = req.Threads
@@ -416,7 +487,7 @@ func (s *Server) createInstance(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	s.store.Audit(r.Context().Value(actorKey{}).(string), "instance.create", i.ID)
-	if i.Provider == "native" {
+	if managed(i) {
 		o, e := s.enqueue(i, "start")
 		if e != nil {
 			fail(w, 500, "无法创建启动操作")
@@ -465,7 +536,7 @@ func (s *Server) instanceAction(w http.ResponseWriter, r *http.Request) {
 		fail(w, 409, "接入的外部实例只能管理索引；启停由原运行环境负责")
 		return
 	}
-	if i.Provider == "native" && i.Status == "running" && !s.native.Owns(i.ID) {
+	if managed(i) && i.Status == "running" && !s.native.Owns(i.ID) {
 		fail(w, 409, "此实例由之前的后台进程启动。请手动停止旧服务后重试，平台不会终止身份不确定的进程")
 		return
 	}
@@ -583,7 +654,7 @@ func (s *Server) logs(w http.ResponseWriter, r *http.Request) {
 		fail(w, 404, "实例不存在")
 		return
 	}
-	if i.Provider != "native" {
+	if !managed(i) {
 		send(w, 200, map[string]string{"text": "外部实例的日志由原运行环境管理。"})
 		return
 	}

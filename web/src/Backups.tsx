@@ -204,12 +204,12 @@ export default function Backups() {
               required
               data={(instances.data || [])
                 .filter(
-                  (i) => i.provider === 'native' && i.status === 'running',
+                  (i) => i.provider !== 'external' && i.status === 'running',
                 )
                 .map((i) => ({ value: i.id, label: i.name }))}
               value={instance}
               onChange={setInstance}
-              placeholder="选择运行中的本地实例"
+              placeholder="选择运行中的托管实例"
             />
           ) : null}
           <PasswordInput

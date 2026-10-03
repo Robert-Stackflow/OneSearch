@@ -38,7 +38,7 @@ import {
 } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import InstanceTree from './InstanceTree';
-import { api, notifyError } from './api';
+import { api, notifyError, type System } from './api';
 const items = [
   { label: '工作台', path: '/', icon: Grid2X2 },
   { label: '备份', path: '/backups', icon: Archive },
@@ -186,6 +186,11 @@ function Sidebar({ onNavigate }: { onNavigate: () => void }) {
   );
 }
 export default function Shell() {
+  const system = useQuery({
+    queryKey: ['system'],
+    queryFn: () => api<System>('/system'),
+    staleTime: 60000,
+  });
   const [opened, { open, close }] = useDisclosure();
   return (
     <div className="studio-shell">
@@ -220,7 +225,9 @@ export default function Shell() {
           <Group gap={7}>
             <span className="connection-dot" />
             <Text size="xs" c="dimmed">
-              本地开发环境
+              {system.data?.mode === 'production'
+                ? '服务已连接'
+                : '本地开发环境'}
             </Text>
           </Group>
         </header>

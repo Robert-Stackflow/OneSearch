@@ -1,5 +1,6 @@
 # OneSearch 功能调研
 
+> 部署更新：服务器 Docker 运行时、同端口前端服务、HTTPS Cookie 和可信代理已实现，配置与当前限制见 [服务器部署](deployment.md)。以下早期调研与演进方案中未完成项目，以部署文档为准。
 调研日期：2026-10-03。本文区分官方能力、OneSearch 的产品选择和当前 dev 的实现范围。项目目录为 `D:/Repositories/Web_Projects/OneSearch`；Moment 作为只读界面参考。
 
 ## 1. 目标与核心结论

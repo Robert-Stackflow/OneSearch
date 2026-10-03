@@ -36,7 +36,7 @@ export interface Instance {
   id: string;
   name: string;
   description: string;
-  provider: 'native' | 'external';
+  provider: 'native' | 'docker' | 'external';
   host: string;
   port: number;
   memoryMB: number;

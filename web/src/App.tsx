@@ -138,7 +138,7 @@ function Login() {
         </Button>
       </Paper>
       <Text size="xs" c="dimmed" mt="lg">
-        初始登录信息保存于项目 data/dev-login.txt
+        初始登录信息由部署管理员提供
       </Text>
     </div>
   );

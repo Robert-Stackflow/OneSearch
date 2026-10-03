@@ -108,8 +108,8 @@ func (s *Server) createBackup(w http.ResponseWriter, r *http.Request) {
 	var instance Instance
 	if req.Kind == "dump" {
 		i, e := s.store.GetInstance(req.InstanceID)
-		if e != nil || i.Provider != "native" || i.Status != "running" {
-			fail(w, 400, "数据备份需要运行中的本平台本地实例")
+		if e != nil || !managed(i) || i.Status != "running" {
+			fail(w, 400, "数据备份需要运行中的托管实例")
 			return
 		}
 		instance = i

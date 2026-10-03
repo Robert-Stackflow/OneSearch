@@ -32,6 +32,9 @@ func (s *Server) securitySchema() error {
 	return e
 }
 func peerIP(r *http.Request) string {
+	if ip, ok := r.Context().Value(clientIPKey{}).(string); ok {
+		return ip
+	}
 	ip, _, e := net.SplitHostPort(r.RemoteAddr)
 	if e != nil {
 		return r.RemoteAddr
@@ -61,7 +64,7 @@ func (s *Server) createSession(w http.ResponseWriter, r *http.Request, user, met
 	if e = tx.Commit(); e != nil {
 		return e
 	}
-	http.SetCookie(w, &http.Cookie{Name: "onesearch_session", Value: token, Path: "/", HttpOnly: true, SameSite: http.SameSiteStrictMode, MaxAge: 86400})
+	http.SetCookie(w, &http.Cookie{Name: "onesearch_session", Value: token, Path: "/", HttpOnly: true, Secure: s.cfg.Mode == "production", SameSite: http.SameSiteStrictMode, MaxAge: 86400})
 	s.store.Audit(user, "login."+method, "console")
 	return nil
 }

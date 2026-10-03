@@ -73,6 +73,7 @@ func (s *Server) changePassword(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	os.Remove(filepath.Join(s.cfg.DataDir, "dev-login.txt"))
+	os.Remove(filepath.Join(s.cfg.DataDir, "initial-login.txt"))
 	s.store.Audit(user, "password.change", "account")
 	send(w, 200, map[string]bool{"ok": true})
 }

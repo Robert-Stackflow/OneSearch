@@ -1,0 +1,46 @@
+services:
+  one-search:
+    image: onesearch:${ONESEARCH_RELEASE:?Set release identifier}
+    container_name: one-search
+    build:
+      context: ./releases/${ONESEARCH_RELEASE}/bundle
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:3013:3013"
+    environment:
+      ONESEARCH_ORIGIN: https://search.cloudchewie.com
+      ONESEARCH_DOCKER_NETWORK: onesearch-engines
+      ONESEARCH_DOCKER_OWNER: ${ONESEARCH_DOCKER_OWNER:?Set stable deployment identifier}
+      ONESEARCH_ENGINE_IMAGE: ${ONESEARCH_ENGINE_IMAGE:-getmeili/meilisearch:v1.54.3}
+      ONESEARCH_HOST_DATA_DIR: /home/apps/one-search/data
+      ONESEARCH_TRUSTED_PROXIES: 10.213.13.1/32
+    volumes:
+      - ./data:/app/data
+      - /var/run/docker.sock:/var/run/docker.sock
+    networks:
+      - engines
+    read_only: true
+    tmpfs:
+      - /tmp:size=64m
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:3013/api/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
+networks:
+  engines:
+    name: onesearch-engines
+    ipam:
+      config:
+        - subnet: 10.213.13.0/24

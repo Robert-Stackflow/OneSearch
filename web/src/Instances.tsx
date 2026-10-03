@@ -46,6 +46,12 @@ export function CreateInstance({
   opened: boolean;
   onClose: () => void;
 }) {
+  const sys = useQuery({
+    queryKey: ['system'],
+    queryFn: () => api<System>('/system'),
+    staleTime: 60000,
+  });
+  const production = sys.data?.mode === 'production';
   const [provider, setProvider] = useState('native');
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
@@ -105,8 +111,10 @@ export function CreateInstance({
             value={provider}
             onChange={setProvider}
             data={[
-              { value: 'native', label: '创建本地实例' },
-              { value: 'external', label: '接入已有实例' },
+              { value: 'native', label: '创建实例' },
+              ...(!production
+                ? [{ value: 'external', label: '接入已有实例' }]
+                : []),
             ]}
           />
           <TextInput
@@ -146,7 +154,9 @@ export function CreateInstance({
                 />
               </SimpleGrid>
               <Text size="xs" c="dimmed">
-                端口自动分配；内存预算只用于索引过程。
+                {production
+                  ? '内存预算只用于索引过程。'
+                  : '端口自动分配；内存预算只用于索引过程。'}
               </Text>
             </>
           ) : (
@@ -208,7 +218,7 @@ function InstanceCard({ instance: i }: { instance: Instance }) {
         <Group gap={7}>
           <HardDrive size={14} />
           <Text size="xs">
-            {i.provider === 'native'
+            {i.provider !== 'external'
               ? `${i.memoryMB} MiB 索引预算`
               : '已接入服务'}
           </Text>
@@ -220,7 +230,7 @@ function InstanceCard({ instance: i }: { instance: Instance }) {
       </div>
       <Group justify="space-between" pt="md" mt="md" className="card-bottom">
         <Text size="xs" c="dimmed">
-          127.0.0.1:{i.port}
+          {i.provider === 'docker' ? '内部服务' : `127.0.0.1:${i.port}`}
         </Text>
         <Group gap={6}>
           <Text size="xs" fw={600}>
@@ -269,7 +279,11 @@ export default function Instances({
       value: live.filter((i) => i.status === 'stopped').length,
       icon: CirclePause,
     },
-    { label: '运行环境', value: 'Native', icon: Cpu },
+    {
+      label: '运行环境',
+      value: sys.data?.runtime === 'docker' ? 'Docker' : 'Native',
+      icon: Cpu,
+    },
   ];
   return (
     <>
@@ -336,8 +350,10 @@ export default function Instances({
         </Group>
       )}
       {sys.data && !sys.data.runtimeAvailable ? (
-        <Alert color="orange" mb="lg" title="本地运行时尚未就绪">
-          请设置 MEILISEARCH_BINARY 后重启后端；也可先接入已有实例。
+        <Alert color="orange" mb="lg" title="搜索运行时尚未就绪">
+          {sys.data.mode === 'production'
+            ? '请检查 Docker 服务和搜索引擎镜像。'
+            : '请设置 MEILISEARCH_BINARY 后重启后端；也可先接入已有实例。'}
         </Alert>
       ) : null}
       {query.isPending ? (

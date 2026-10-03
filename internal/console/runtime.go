@@ -29,6 +29,18 @@ type NativeRuntime struct {
 	children        map[string]*child
 }
 
+// EngineRuntime controls only engines owned by this deployment.
+type EngineRuntime interface {
+	Version(context.Context) (string, error)
+	Start(Instance) (int, error)
+	Stop(Instance) error
+	Owns(string) bool
+	Shutdown()
+	Logs(Instance) (string, error)
+}
+
+func managed(i Instance) bool { return i.Provider == "native" || i.Provider == "docker" }
+
 func NewRuntime(binary, dir string) *NativeRuntime {
 	return &NativeRuntime{Binary: binary, DataDir: dir, children: map[string]*child{}}
 }
