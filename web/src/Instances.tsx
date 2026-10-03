@@ -249,7 +249,7 @@ export default function Instances({
 }) {
   const [opened, setOpened] = useState(false);
   const [search, setSearch] = useState('');
-  const [filter, setFilter] = useState('active');
+  const [filter, setFilter] = useState('running');
   const query = useQuery({
     queryKey: ['instances'],
     queryFn: () => api<Instance[]>('/instances'),
@@ -262,11 +262,17 @@ export default function Instances({
   });
   const all = query.data || [];
   const live = all.filter((i) => i.status !== 'archived');
-  const filtered = (
-    filter === 'archived' ? all.filter((i) => i.status === 'archived') : live
-  ).filter((i) =>
-    (i.name + i.description).toLowerCase().includes(search.toLowerCase()),
-  );
+  const filtered = (dashboard ? live : all).filter((i) => {
+    const matchesState =
+      dashboard ||
+      filter === 'all' ||
+      i.status === filter ||
+      (filter === 'starting' && i.status === 'provisioning');
+    return (
+      matchesState &&
+      (i.name + i.description).toLowerCase().includes(search.toLowerCase())
+    );
+  });
   const metrics = [
     { label: '搜索实例', value: live.length, icon: Boxes },
     {
@@ -343,7 +349,10 @@ export default function Instances({
             value={filter}
             onChange={setFilter}
             data={[
-              { value: 'active', label: '使用中' },
+              { value: 'all', label: '全部' },
+              { value: 'running', label: '运行中' },
+              { value: 'starting', label: '启动中' },
+              { value: 'stopped', label: '已停止' },
               { value: 'archived', label: '已归档' },
             ]}
           />
@@ -367,13 +376,31 @@ export default function Instances({
           ))}
         </SimpleGrid>
       ) : (
-        <Empty title={search ? '没有匹配的实例' : '还没有搜索实例'}>
-          <Button
-            onClick={() => setOpened(true)}
-            leftSection={<Plus size={17} />}
-          >
-            添加实例
-          </Button>
+        <Empty
+          title={
+            search || (!dashboard && filter !== 'all')
+              ? '没有符合条件的实例'
+              : '还没有搜索实例'
+          }
+        >
+          {!dashboard && (search || filter !== 'all') ? (
+            <Button
+              variant="default"
+              onClick={() => {
+                setSearch('');
+                setFilter('all');
+              }}
+            >
+              查看全部
+            </Button>
+          ) : (
+            <Button
+              onClick={() => setOpened(true)}
+              leftSection={<Plus size={17} />}
+            >
+              添加实例
+            </Button>
+          )}
         </Empty>
       )}
       <CreateInstance opened={opened} onClose={() => setOpened(false)} />

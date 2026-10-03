@@ -22,6 +22,7 @@ import (
 )
 
 type Backup struct {
+	Automatic  bool   `json:"automatic"`
 	ID         string `json:"id"`
 	Kind       string `json:"kind"`
 	InstanceID string `json:"instanceId,omitempty"`
@@ -30,6 +31,40 @@ type Backup struct {
 	Size       int64  `json:"size"`
 	SHA256     string `json:"sha256,omitempty"`
 	Error      string `json:"error,omitempty"`
+}
+
+func (s *Server) recoverBackups() error {
+	rows, e := s.store.db.Query("SELECT payload FROM backups")
+	if e != nil {
+		return e
+	}
+	var interrupted []Backup
+	for rows.Next() {
+		var raw string
+		if e = rows.Scan(&raw); e != nil {
+			rows.Close()
+			return e
+		}
+		var b Backup
+		if e = json.Unmarshal([]byte(raw), &b); e != nil {
+			rows.Close()
+			return e
+		}
+		if b.Status == "running" {
+			interrupted = append(interrupted, b)
+		}
+	}
+	e = rows.Err()
+	rows.Close()
+	if e != nil {
+		return e
+	}
+	for _, b := range interrupted {
+		b.Status = "failed"
+		b.Error = "后台重启中断了备份，请重新创建"
+		s.saveBackup(b)
+	}
+	return nil
 }
 
 func (s *Server) saveBackup(b Backup) {
@@ -118,40 +153,48 @@ func (s *Server) createBackup(w http.ResponseWriter, r *http.Request) {
 	s.saveBackup(b)
 	s.store.Audit(r.Context().Value(actorKey{}).(string), "backup.create", b.ID)
 	s.work.Add(1)
-	go func() {
-		defer s.work.Done()
-		var archive []byte
-		var e error
-		if b.Kind == "platform" {
-			archive, e = s.platformArchive()
-		} else {
-			archive, e = s.dumpArchive(instance)
-		}
-		if e == nil {
-			archive, e = encryptArchive(archive, req.Password)
-		}
-		if e == nil {
-			e = os.MkdirAll(filepath.Join(s.cfg.DataDir, "backups"), 0700)
-		}
-		if e == nil {
-			e = os.WriteFile(filepath.Join(s.cfg.DataDir, "backups", b.ID+".osbackup"), archive, 0600)
-		}
-		if e != nil {
-			b.Status = "failed"
-			message := e.Error()
-			if instance.Secret != "" {
-				message = strings.ReplaceAll(message, instance.Secret, "[REDACTED]")
-			}
-			b.Error = "备份未完成，请检查本地文件权限和实例任务：" + message
-		} else {
-			b.Status = "succeeded"
-			b.Size = int64(len(archive))
-			b.SHA256 = hashToken(string(archive))
-		}
-		s.saveBackup(b)
-	}()
+	go func() { defer s.work.Done(); s.performBackup(b, instance, req.Password) }()
 	send(w, 202, b)
 }
+func (s *Server) performBackup(b Backup, instance Instance, password string) {
+	s.backupMu.Lock()
+	defer s.backupMu.Unlock()
+	var archive []byte
+	var e error
+	var dumpPath string
+	if b.Kind == "platform" {
+		archive, e = s.platformArchive()
+	} else {
+		archive, dumpPath, e = s.dumpArchiveFile(instance)
+	}
+	if e == nil {
+		archive, e = encryptArchive(archive, password)
+	}
+	if e == nil {
+		e = os.MkdirAll(filepath.Join(s.cfg.DataDir, "backups"), 0700)
+	}
+	if e == nil {
+		e = os.WriteFile(filepath.Join(s.cfg.DataDir, "backups", b.ID+".osbackup"), archive, 0600)
+	}
+	if e == nil && dumpPath != "" {
+		// Remove only the temporary dump created for this encrypted backup.
+		e = os.Remove(dumpPath)
+	}
+	if e != nil {
+		b.Status = "failed"
+		message := e.Error()
+		if instance.Secret != "" {
+			message = strings.ReplaceAll(message, instance.Secret, "[REDACTED]")
+		}
+		b.Error = "备份未完成，请检查本地文件权限和实例任务：" + message
+	} else {
+		b.Status = "succeeded"
+		b.Size = int64(len(archive))
+		b.SHA256 = hashToken(string(archive))
+	}
+	s.saveBackup(b)
+}
+
 func (s *Server) platformArchive() ([]byte, error) {
 	id := randomID()
 	path := filepath.Join(s.cfg.DataDir, "backup-"+id+".sqlite")
@@ -202,27 +245,34 @@ func zipFiles(files map[string][]byte) ([]byte, error) {
 	return buf.Bytes(), nil
 }
 func (s *Server) dumpArchive(i Instance) ([]byte, error) {
+	b, _, e := s.dumpArchiveFile(i)
+	return b, e
+}
+func (s *Server) dumpArchiveFile(i Instance) ([]byte, string, error) {
+	if !engineIDPattern.MatchString(i.ID) {
+		return nil, "", errors.New("实例标识无效")
+	}
 	ctx, c := context.WithTimeout(s.ctx, 90*time.Second)
 	defer c()
 	body, status, e := upstream(ctx, i, "POST", "/dumps", nil)
 	if e != nil || status >= 400 {
-		return nil, fmt.Errorf("实例拒绝备份（HTTP %d）", status)
+		return nil, "", fmt.Errorf("实例拒绝备份（HTTP %d）", status)
 	}
 	var task struct {
 		UID int `json:"taskUid"`
 	}
 	if e = json.Unmarshal(body, &task); e != nil {
-		return nil, e
+		return nil, "", e
 	}
 	for {
 		select {
 		case <-ctx.Done():
-			return nil, ctx.Err()
+			return nil, "", ctx.Err()
 		case <-time.After(300 * time.Millisecond):
 		}
 		body, status, e = upstream(ctx, i, "GET", fmt.Sprintf("/tasks/%d", task.UID), nil)
 		if e != nil || status != 200 {
-			return nil, errors.New("无法查询备份任务")
+			return nil, "", errors.New("无法查询备份任务")
 		}
 		var result struct {
 			Status  string `json:"status"`
@@ -231,21 +281,23 @@ func (s *Server) dumpArchive(i Instance) ([]byte, error) {
 			} `json:"details"`
 		}
 		if json.Unmarshal(body, &result) != nil {
-			return nil, errors.New("备份任务响应无效")
+			return nil, "", errors.New("备份任务响应无效")
 		}
 		if result.Status == "failed" || result.Status == "canceled" {
-			return nil, errors.New("实例备份任务失败")
+			return nil, "", errors.New("实例备份任务失败")
 		}
 		if result.Status == "succeeded" {
 			if !uidPattern.MatchString(result.Details.DumpUID) {
-				return nil, errors.New("备份文件标识无效")
+				return nil, "", errors.New("备份文件标识无效")
 			}
-			data, e := os.ReadFile(filepath.Join(s.cfg.DataDir, "instances", i.ID, "dumps", result.Details.DumpUID+".dump"))
+			path := filepath.Join(s.cfg.DataDir, "instances", i.ID, "dumps", result.Details.DumpUID+".dump")
+			data, e := os.ReadFile(path)
 			if e != nil {
-				return nil, e
+				return nil, "", e
 			}
 			manifest, _ := json.Marshal(map[string]any{"format": 1, "kind": "dump", "instanceId": i.ID, "version": i.Version, "dumpUID": result.Details.DumpUID})
-			return zipFiles(map[string][]byte{"engine.dump": data, "manifest.json": manifest})
+			b, e := zipFiles(map[string][]byte{"engine.dump": data, "manifest.json": manifest})
+			return b, path, e
 		}
 	}
 }

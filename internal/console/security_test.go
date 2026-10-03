@@ -45,8 +45,15 @@ func TestTOTPAndSessionRevocation(t *testing.T) {
 	secret := base32.StdEncoding.WithPadding(base32.NoPadding).EncodeToString([]byte("12345678901234567890"))
 	s.store.db.Exec("INSERT INTO security(username,totp_secret,enabled,recovery_hashes) VALUES(?,?,1,?)", "admin", s.store.seal(secret), `["`+hashToken("RECOVERYCODE12345")+`"]`)
 	w = call(s, "POST", "/api/auth/login", `{"username":"admin","password":"test-admin-password-long"}`)
-	if w.Code != 401 {
-		t.Fatal("password bypassed second factor")
+	if w.Code != 200 || !bytes.Contains(w.Body.Bytes(), []byte(`"requiresTwoFactor":true`)) || len(w.Result().Cookies()) != 0 {
+		t.Fatal("password-only login must request second factor without creating a session")
+	}
+	if call(s, "GET", "/api/auth/me", "").Code != 401 {
+		t.Fatal("second-factor prompt authenticated an anonymous request")
+	}
+	w = call(s, "POST", "/api/auth/login", `{"username":"admin","password":"incorrect-password"}`)
+	if w.Code != 401 || bytes.Contains(w.Body.Bytes(), []byte("requiresTwoFactor")) {
+		t.Fatal("invalid password revealed second-factor state")
 	}
 	code := totp(secret, time.Now().Unix()/30)
 	w = call(s, "POST", "/api/auth/login", `{"username":"admin","password":"test-admin-password-long","otp":"`+code+`"}`)

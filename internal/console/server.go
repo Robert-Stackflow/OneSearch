@@ -39,6 +39,7 @@ type Server struct {
 	ctx           context.Context
 	cancel        context.CancelFunc
 	createMu      sync.Mutex
+	backupMu      sync.Mutex
 	loginMu       sync.Mutex
 	loginFailures map[string][]time.Time
 }
@@ -97,6 +98,11 @@ func New(cfg Config) (*Server, error) {
 		cancel()
 		return nil, err
 	}
+	if err = s.recoverBackups(); err != nil {
+		store.Close()
+		cancel()
+		return nil, err
+	}
 	// Interrupted operations are not silently replayed. A user can explicitly retry.
 	ops, err := store.Operations()
 	if err != nil {
@@ -142,6 +148,8 @@ func New(cfg Config) (*Server, error) {
 	}
 	s.work.Add(1)
 	go s.worker()
+	s.work.Add(1)
+	go s.backupScheduler()
 	if cfg.Mode == "production" {
 		for _, i := range list {
 			full, e := store.GetInstance(i.ID)
@@ -230,7 +238,7 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("OPTIONS /api/search/{id}/{index}", s.publicSearch)
 	protected := http.NewServeMux()
 	protected.HandleFunc("GET /api/auth/me", func(w http.ResponseWriter, r *http.Request) {
-		send(w, 200, map[string]any{"username": r.Context().Value(actorKey{}), "mode": s.cfg.Mode})
+		send(w, 200, s.accountInfo(r.Context().Value(actorKey{}).(string)))
 	})
 	protected.HandleFunc("POST /api/auth/logout", s.logout)
 	s.extraRoutes(protected)
@@ -332,7 +340,23 @@ func (s *Server) login(w http.ResponseWriter, r *http.Request) {
 	s.loginMu.Unlock()
 	var h []byte
 	err := s.store.db.QueryRow("SELECT password_hash FROM users WHERE username=?", req.Username).Scan(&h)
-	if err != nil || bcrypt.CompareHashAndPassword(h, []byte(req.Password)) != nil || !s.verifySecondFactor(req.Username, req.OTP) {
+	if err != nil || bcrypt.CompareHashAndPassword(h, []byte(req.Password)) != nil {
+		fail(w, 401, "用户名、密码或双因素验证码不正确")
+		return
+	}
+	var enabled int
+	err = s.store.db.QueryRow("SELECT enabled FROM security WHERE username=?", req.Username).Scan(&enabled)
+	if err != nil && !errors.Is(err, sql.ErrNoRows) {
+		fail(w, 500, "无法读取账户安全设置")
+		return
+	}
+	// Reveal the second-factor step only after password verification. This
+	// response does not authenticate the user or issue a session cookie.
+	if enabled == 1 && strings.TrimSpace(req.OTP) == "" {
+		send(w, 200, map[string]bool{"requiresTwoFactor": true})
+		return
+	}
+	if !s.verifySecondFactor(req.Username, req.OTP) {
 		fail(w, 401, "用户名、密码或双因素验证码不正确")
 		return
 	}

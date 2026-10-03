@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import AutoBackups from './AutoBackups';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import {
   Alert,
@@ -32,6 +33,7 @@ interface Backup {
   size: number;
   error?: string;
   sha256?: string;
+  automatic?: boolean;
 }
 export default function Backups() {
   const [open, setOpen] = useState(false);
@@ -107,6 +109,7 @@ export default function Backups() {
         平台备份包含账户、通行密钥、设置、请求历史和实例凭据，不包含搜索数据及登录会话。搜索数据备份使用
         Meilisearch dump。恢复操作使用离线工具，操作说明见设计文档。
       </Alert>
+      <AutoBackups />
       {q.isPending ? (
         <Loading />
       ) : q.error ? (
@@ -114,7 +117,7 @@ export default function Backups() {
       ) : !q.data.length ? (
         <Empty
           title="尚未创建备份"
-          description="备份密码不会保存，下载文件后请单独妥善保管密码。"
+          description="手动备份密码不保存；自动备份密码加密保存。恢复时需要对应密码。"
         />
       ) : (
         <Paper withBorder>
@@ -135,6 +138,7 @@ export default function Backups() {
                     <Table.Td>
                       <Text size="sm" fw={600}>
                         {b.kind === 'platform' ? '平台配置' : '搜索数据 dump'}
+                        {b.automatic ? ' · 自动' : ''}
                       </Text>
                       <Text size="xs" c="dimmed">
                         {

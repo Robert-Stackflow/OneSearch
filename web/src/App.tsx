@@ -51,16 +51,24 @@ function Login() {
   const [name, setName] = useState('admin');
   const [password, setPassword] = useState('');
   const [otp, setOTP] = useState('');
+  const [secondFactor, setSecondFactor] = useState(false);
   const [passkeyBusy, setPasskeyBusy] = useState(false);
   const nav = useNavigate();
   const cache = useQueryClient();
   const login = useMutation({
     mutationFn: () =>
-      api('/auth/login', {
+      api<{ requiresTwoFactor?: boolean }>('/auth/login', {
         method: 'POST',
         body: JSON.stringify({ username: name, password, otp }),
       }),
-    onSuccess: () => {
+    onSuccess: (result) => {
+      if (result.requiresTwoFactor) {
+        setSecondFactor(true);
+        setOTP('');
+        return;
+      }
+      setPassword('');
+      setOTP('');
       cache.invalidateQueries({ queryKey: ['me'] });
       nav('/');
     },
@@ -70,6 +78,8 @@ function Login() {
     setPasskeyBusy(true);
     try {
       await loginPasskey(name);
+      setPassword('');
+      setOTP('');
       cache.invalidateQueries({ queryKey: ['me'] });
       nav('/');
     } catch (e) {
@@ -86,7 +96,7 @@ function Login() {
       </div>
       <Paper withBorder p={32} w="100%" maw={430}>
         <Title order={3} mb={6}>
-          登录工作空间
+          {secondFactor ? '双因素身份验证' : '登录工作空间'}
         </Title>
         <form
           onSubmit={(e) => {
@@ -95,34 +105,60 @@ function Login() {
           }}
         >
           <Stack>
-            <TextInput
-              label="用户名"
-              autoComplete="username"
-              required
-              value={name}
-              onChange={(e) => setName(e.currentTarget.value)}
-            />
-            <PasswordInput
-              label="密码"
-              autoComplete="current-password"
-              required
-              value={password}
-              onChange={(e) => setPassword(e.currentTarget.value)}
-            />
-            <TextInput
-              label="双因素验证码或恢复码"
-              description="已开启双因素认证时填写"
-              autoComplete="one-time-code"
-              value={otp}
-              onChange={(e) => setOTP(e.currentTarget.value)}
-            />
+            {!secondFactor ? (
+              <>
+                <TextInput
+                  label="用户名"
+                  autoComplete="username"
+                  required
+                  value={name}
+                  onChange={(e) => setName(e.currentTarget.value)}
+                />
+                <PasswordInput
+                  label="密码"
+                  autoComplete="current-password"
+                  required
+                  value={password}
+                  onChange={(e) => setPassword(e.currentTarget.value)}
+                />
+              </>
+            ) : (
+              <>
+                <Text size="sm" c="dimmed">
+                  正在验证 {name}
+                </Text>
+                <TextInput
+                  label="双因素验证码或恢复码"
+                  description="输入验证器中的验证码，或使用一次性恢复码"
+                  autoComplete="one-time-code"
+                  autoFocus
+                  required
+                  value={otp}
+                  onChange={(e) => setOTP(e.currentTarget.value)}
+                />
+              </>
+            )}
             <Button
               type="submit"
               loading={login.isPending}
               rightSection={<ArrowRight size={16} />}
             >
-              登录
+              {secondFactor ? '验证并登录' : '登录'}
             </Button>
+            {secondFactor ? (
+              <Button
+                variant="subtle"
+                disabled={login.isPending}
+                onClick={() => {
+                  setSecondFactor(false);
+                  setOTP('');
+                  setPassword('');
+                  login.reset();
+                }}
+              >
+                返回密码登录
+              </Button>
+            ) : null}
           </Stack>
         </form>
         <Divider label="或" my="lg" />

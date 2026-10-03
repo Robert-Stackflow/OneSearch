@@ -26,6 +26,10 @@ const auditLabels: Record<string, string> = {
   'password.change': '修改密码',
   'site-policy.update': '更新站点访问规则',
   'backup.create': '创建备份',
+  'backup.schedule': '更新自动备份',
+  'backup.auto': '执行自动备份',
+  'account.update': '修改账户资料',
+  'account.avatar': '更新账户头像',
 };
 function auditAction(action: string) {
   if (auditLabels[action] || actionLabels[action])

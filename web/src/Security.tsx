@@ -170,26 +170,32 @@ export default function Security({
                   添加通行密钥
                 </Button>
               </Group>
-              <Text size="xs" c="dimmed" mb="md">
-                当前站点：{q.data.rpOrigin}。正式域名上线后需为新域名重新注册。
-              </Text>
               {keys.error ? (
                 <ErrorState error={keys.error} retry={keys.refetch} />
               ) : keys.data?.length ? (
                 <Stack>
                   {keys.data.map((k) => (
-                    <Group key={k.id} justify="space-between">
-                      <div>
-                        <Text size="sm" fw={600}>
-                          {k.name}
-                        </Text>
-                        <Text size="xs" c="dimmed">
-                          创建 {formatDate(k.createdAt)} ·{' '}
-                          {k.lastUsedAt
-                            ? `最近使用 ${formatDate(k.lastUsedAt)}`
-                            : '尚未使用'}
-                        </Text>
-                      </div>
+                    <Group
+                      key={k.id}
+                      justify="space-between"
+                      className="passkey-entry"
+                    >
+                      <Group gap="sm">
+                        <span className="credential-icon">
+                          <KeyRound size={18} />
+                        </span>
+                        <div>
+                          <Text size="sm" fw={600}>
+                            {k.name}
+                          </Text>
+                          <Text size="xs" c="dimmed">
+                            创建 {formatDate(k.createdAt)} ·{' '}
+                            {k.lastUsedAt
+                              ? `最近使用 ${formatDate(k.lastUsedAt)}`
+                              : '尚未使用'}
+                          </Text>
+                        </div>
+                      </Group>
                       <Button
                         variant="subtle"
                         color="red"
@@ -218,12 +224,47 @@ export default function Security({
                     </Text>
                   </div>
                 </Group>
-                <Badge
-                  color={q.data.totpEnabled ? 'teal' : 'gray'}
-                  variant="light"
-                >
-                  {q.data.totpEnabled ? '已开启' : '未开启'}
-                </Badge>
+                <Group gap="sm">
+                  {' '}
+                  <Badge
+                    color={q.data.totpEnabled ? 'teal' : 'gray'}
+                    variant="light"
+                  >
+                    {q.data.totpEnabled ? '已开启' : '未开启'}
+                  </Badge>{' '}
+                  {q.data.totpEnabled ? (
+                    <Button
+                      variant="light"
+                      color="red"
+                      onClick={() => {
+                        setCode('');
+                        setDisable(true);
+                      }}
+                    >
+                      关闭双因素认证
+                    </Button>
+                  ) : (
+                    <Button
+                      loading={busy}
+                      onClick={() =>
+                        void run(
+                          async () => {
+                            setSetup(
+                              await api('/security/totp/begin', {
+                                method: 'POST',
+                              }),
+                            );
+                            setCode('');
+                          },
+                          undefined,
+                          true,
+                        )
+                      }
+                    >
+                      设置验证器
+                    </Button>
+                  )}
+                </Group>
               </Group>
               <Group justify="space-between" mt="xl">
                 <Text size="sm" c="dimmed">
@@ -231,38 +272,6 @@ export default function Security({
                     ? `剩余恢复码 ${q.data.recoveryRemaining} 个`
                     : '使用验证器生成每 30 秒更新的验证码。'}
                 </Text>
-                {q.data.totpEnabled ? (
-                  <Button
-                    variant="light"
-                    color="red"
-                    onClick={() => {
-                      setCode('');
-                      setDisable(true);
-                    }}
-                  >
-                    关闭双因素认证
-                  </Button>
-                ) : (
-                  <Button
-                    loading={busy}
-                    onClick={() =>
-                      void run(
-                        async () => {
-                          setSetup(
-                            await api('/security/totp/begin', {
-                              method: 'POST',
-                            }),
-                          );
-                          setCode('');
-                        },
-                        undefined,
-                        true,
-                      )
-                    }
-                  >
-                    设置验证器
-                  </Button>
-                )}
               </Group>
             </Paper>
           </>

@@ -38,7 +38,7 @@ import {
 } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import InstanceTree from './InstanceTree';
-import { api, notifyError, type System } from './api';
+import { api, notifyError, type System, type AccountInfo } from './api';
 const items = [
   { label: '工作台', path: '/', icon: Grid2X2 },
   { label: '备份', path: '/backups', icon: Archive },
@@ -50,7 +50,7 @@ function Sidebar({ onNavigate }: { onNavigate: () => void }) {
   const cache = useQueryClient();
   const me = useQuery({
     queryKey: ['me'],
-    queryFn: () => api<{ username: string }>('/auth/me'),
+    queryFn: () => api<AccountInfo>('/auth/me'),
   });
   const username = me.data?.username || 'admin';
   async function logout() {
@@ -147,12 +147,17 @@ function Sidebar({ onNavigate }: { onNavigate: () => void }) {
         <Menu position="top-start" width={212} offset={10}>
           <Menu.Target>
             <UnstyledButton className="account-switch" aria-label="账户菜单">
-              <Avatar size={34} radius={11} color="victoria">
-                {username.slice(0, 1).toUpperCase()}
+              <Avatar
+                src={me.data?.avatarUrl || undefined}
+                size={34}
+                radius={11}
+                color="victoria"
+              >
+                {(me.data?.name || username).slice(0, 1).toUpperCase()}
               </Avatar>
               <span className="account-label">
                 <Text fw={600} size="sm" truncate>
-                  {username}
+                  {me.data?.name || username}
                 </Text>
                 <Text size="xs" c="dimmed" truncate>
                   @{username}

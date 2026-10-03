@@ -1,15 +1,19 @@
-import { useState } from 'react';
+import { lazy, Suspense, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { ActionIcon, Collapse, NavLink, Text } from '@mantine/core';
+import { ActionIcon, Button, Collapse, NavLink, Text } from '@mantine/core';
 import {
   Boxes,
   ChevronDown,
   ChevronRight,
   Database,
+  Plus,
   Server,
 } from 'lucide-react';
 import { Link, useLocation } from 'react-router-dom';
 import { api, engine, type Index, type Instance, type Page } from './api';
+const CreateInstance = lazy(() =>
+  import('./Instances').then((module) => ({ default: module.CreateInstance })),
+);
 export default function InstanceTree({
   onNavigate,
 }: {
@@ -17,11 +21,13 @@ export default function InstanceTree({
 }) {
   const location = useLocation();
   const [expanded, setExpanded] = useState(true);
+  const [createOpened, setCreateOpened] = useState(false);
   const q = useQuery({
     queryKey: ['instances'],
     queryFn: () => api<Instance[]>('/instances'),
     refetchInterval: 4000,
   });
+  const instances = (q.data || []).filter((i) => i.status !== 'archived');
   return (
     <>
       <NavLink
@@ -58,15 +64,31 @@ export default function InstanceTree({
             <Text size="xs" c="red" p="sm">
               实例读取失败
             </Text>
+          ) : instances.length ? (
+            instances.map((i) => (
+              <TreeInstance key={i.id} instance={i} onNavigate={onNavigate} />
+            ))
           ) : (
-            (q.data || [])
-              .filter((i) => i.status !== 'archived')
-              .map((i) => (
-                <TreeInstance key={i.id} instance={i} onNavigate={onNavigate} />
-              ))
+            <Button
+              fullWidth
+              variant="subtle"
+              size="sm"
+              leftSection={<Plus size={15} />}
+              onClick={() => setCreateOpened(true)}
+            >
+              创建实例
+            </Button>
           )}
         </div>
       </Collapse>
+      {createOpened ? (
+        <Suspense fallback={null}>
+          <CreateInstance
+            opened={createOpened}
+            onClose={() => setCreateOpened(false)}
+          />
+        </Suspense>
+      ) : null}
     </>
   );
 }
@@ -142,9 +164,14 @@ function TreeInstance({
             />
           ))
         ) : (
-          <Text size="xs" c="dimmed" className="tree-note">
-            暂无索引
-          </Text>
+          <NavLink
+            component={Link}
+            to={`/instances/${i.id}?view=indexes&action=create-index`}
+            label="创建索引"
+            leftSection={<Plus size={13} />}
+            className="studio-nav tree-index tree-create"
+            onClick={onNavigate}
+          />
         )}
       </Collapse>
     </>

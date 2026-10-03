@@ -13,6 +13,12 @@ import (
 )
 
 func (s *Server) extraSchema() error {
+	if e := s.scheduleSchema(); e != nil {
+		return e
+	}
+	if e := s.profileSchema(); e != nil {
+		return e
+	}
 	if e := s.securitySchema(); e != nil {
 		return e
 	}
@@ -28,6 +34,11 @@ CREATE TABLE IF NOT EXISTS backups(id TEXT PRIMARY KEY,payload TEXT NOT NULL);
 	return s.analyticsSchema()
 }
 func (s *Server) extraRoutes(m *http.ServeMux) {
+	m.HandleFunc("GET /api/backups/schedule", s.getSchedule)
+	m.HandleFunc("PUT /api/backups/schedule", s.putSchedule)
+	m.HandleFunc("PUT /api/account", s.updateProfile)
+	m.HandleFunc("POST /api/account/avatar", s.uploadAvatar)
+	m.HandleFunc("GET /api/account/avatar", s.avatar)
 	m.HandleFunc("GET /api/calendar", s.calendar)
 	m.HandleFunc("GET /api/instances/{id}/analytics", s.instanceAnalytics)
 	m.HandleFunc("GET /api/instances/{id}/operations", s.instanceOperations)

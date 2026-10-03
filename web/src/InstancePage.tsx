@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
   Link,
   useNavigate,
@@ -113,6 +113,19 @@ export default function InstancePage() {
     refetchInterval: 3000,
   });
   const i = instance.data;
+  useEffect(() => {
+    if (params.get('action') === 'create-index' && i?.status === 'running') {
+      setCreateOpen(true);
+      setParams(
+        (previous) => {
+          const next = new URLSearchParams(previous);
+          next.delete('action');
+          return next;
+        },
+        { replace: true },
+      );
+    }
+  }, [params, setParams, i?.status]);
   const indexes = useQuery({
     queryKey: ['indexes', id],
     queryFn: () => engine<Page<Index>>(id, 'indexes?limit=100'),

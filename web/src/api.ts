@@ -32,6 +32,12 @@ export function notifyError(error: unknown) {
 export function notifySuccess(message: string) {
   notifications.show({ title: '已完成', message, color: 'teal' });
 }
+export interface AccountInfo {
+  username: string;
+  name: string;
+  avatarUrl: string;
+  mode: string;
+}
 export interface Instance {
   id: string;
   name: string;
