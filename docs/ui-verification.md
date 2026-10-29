@@ -1,6 +1,6 @@
 # OneUI 界面验证
 
-2026-10-29：正式依赖固定为 npm 发布的 `@robert-stackflow/oneui@0.6.1`，锁文件解析到官方 registry，SHA-512 与最终测试候选一致。蓝白主题由 OneUI ThemeProvider 提供。应用使用原有 Select、Combobox、SearchField、Segmented、Statistic、Descriptions、Toast、SettingsLayout、SessionItem 和 PasskeyItem。通用资源卡片、登录布局、可展开导航和表格布局能力维护在 OneUI 中。
+2026-10-29：正式依赖固定为 npm 发布的 `@robert-stackflow/oneui@0.6.2`，锁文件解析到官方 registry，SHA-512 与最终测试候选一致。蓝白主题由 OneUI ThemeProvider 提供。应用使用原有 Select、Combobox、SearchField、Segmented、Statistic、Descriptions、Toast、SettingsLayout、SessionItem 和 PasskeyItem。通用资源卡片、登录布局、可展开导航和表格布局能力维护在 OneUI 中。
 
 - 实例列表、实例详情分组页、账户与安全、审计、历史、备份等 25 个桌面/窄屏页面检查未发现页面横向溢出、非法表格子元素或重复字段标签。
 - 修复布局组件边距被未定义值覆盖、表头内非法包装、表格圆角和链接字段对齐问题。
@@ -9,3 +9,9 @@
 - `npm run test:design` 检查应用不重新引入独立基础控件、旧组件库或组件视觉覆盖；`npm run build` 验证类型和生产构建。
 
 `npm run review:ui` 启动隔离的视觉检查环境（5179），使用确定性数据且拒绝写操作。真实开发入口使用 `npm run dev`，连接本地 Go 服务；视觉检查结果不代表真实搜索引擎和通行密钥注册的端到端验收。
+
+## 线上深浅色复查
+
+使用已登录的正式站点检查 19 个页面的浅色/深色布局与配色，包括登录、工作台、实例列表、备份、账户五页及实例十个分组页面；另检查 390px 下 7 个代表页面的两种外观。未发现整页横向溢出、表格非法结构或窄屏表单控件越界。确认索引下拉框搜索、空结果恢复、侧栏层级折叠和 76px 紧凑模式；展开按钮位于对应行内。
+
+真实长文本暴露了两个问题：文档网址压缩标题列，审计目标撑宽表格。0.6.2 修复共享 Text/Heading 的多行截断继承 nowrap；应用使用固定表格列宽和共享 Text 的省略能力，长内容保留完整悬停文本。实例服务地址采用共享 Text 单行省略，避免顶部信息卡被长主机名撑高。

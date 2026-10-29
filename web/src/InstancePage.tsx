@@ -274,7 +274,15 @@ export default function InstancePage() {
           layout="vertical"
           label="实例信息"
           items={[
-            { key: 'address', label: '服务地址', children: i.host },
+            {
+              key: 'address',
+              label: '服务地址',
+              children: (
+                <Text size="xs" truncate title={i.host}>
+                  {i.host}
+                </Text>
+              ),
+            },
             { key: 'version', label: '引擎版本', children: i.version || '—' },
             {
               key: 'documents',

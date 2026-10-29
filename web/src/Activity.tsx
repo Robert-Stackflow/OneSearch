@@ -120,32 +120,42 @@ export default function Activity({
       ) : (
         <Paper withBorder>
           <Table.ScrollContainer minWidth={embedded ? 560 : 660}>
-            <Table>
+            <Table style={{ tableLayout: 'fixed' }}>
               <Table.Thead>
                 <Table.Tr>
                   <Table.Th>操作</Table.Th>
-                  <Table.Th>目标</Table.Th>
-                  <Table.Th style={{ whiteSpace: 'nowrap' }}>
+                  <Table.Th w="30%">目标</Table.Th>
+                  <Table.Th w={100}>
                     {kind === 'operations' ? '状态' : '操作者'}
                   </Table.Th>
-                  <Table.Th>时间</Table.Th>
+                  <Table.Th w={150}>时间</Table.Th>
                 </Table.Tr>
               </Table.Thead>
               <Table.Tbody>
                 {rows.map((r) => (
                   <Table.Tr key={r.id}>
                     <Table.Td>
-                      <Text size="sm" fw={500}>
+                      <Text size="sm" fw={500} lineClamp={2}>
                         {auditAction(r.action)}
                       </Text>
                       {r.message ? (
-                        <Text c="dimmed" size="xs" maw={400}>
+                        <Text
+                          c="dimmed"
+                          size="xs"
+                          lineClamp={2}
+                          title={r.message}
+                        >
                           {r.message}
                         </Text>
                       ) : null}
                     </Table.Td>
                     <Table.Td>
-                      <Text size="sm">
+                      <Text
+                        size="sm"
+                        lineClamp={2}
+                        title={r.target}
+                        style={{ overflowWrap: 'anywhere' }}
+                      >
                         {r.instanceName ||
                           instances.data?.find((i) => i.id === r.target)
                             ?.name ||
@@ -156,7 +166,14 @@ export default function Activity({
                       {r.status ? (
                         <Status value={r.status} />
                       ) : (
-                        <Text size="sm">{r.actor}</Text>
+                        <Text
+                          size="sm"
+                          lineClamp={2}
+                          title={r.actor}
+                          style={{ overflowWrap: 'anywhere' }}
+                        >
+                          {r.actor}
+                        </Text>
                       )}
                     </Table.Td>
                     <Table.Td>

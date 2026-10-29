@@ -287,7 +287,7 @@ export default function Documents({
             />
           ) : (
             <Table.ScrollContainer minWidth={580}>
-              <Table>
+              <Table style={{ tableLayout: 'fixed' }}>
                 <Table.Thead>
                   <Table.Tr>
                     <Table.Th>文档</Table.Th>
@@ -360,6 +360,7 @@ export default function Documents({
                             size="xs"
                             c="dimmed"
                             lineClamp={2}
+                            title={text(d.url ?? d[primaryKey])}
                             style={{ overflowWrap: 'anywhere' }}
                           >
                             {text(d.url ?? d[primaryKey])}
