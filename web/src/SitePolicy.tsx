@@ -1,23 +1,25 @@
-import { useState } from 'react';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { Card } from '@robert-stackflow/oneui/Card';
+import { SettingRow } from '@robert-stackflow/oneui/SettingRow';
+import { Button } from '@robert-stackflow/oneui/Button';
 import {
-  Button,
   Code,
-  CopyButton,
   Group,
-  NumberInput,
-  Paper,
+  Surface as Paper,
   SimpleGrid,
   Stack,
-  TagsInput,
   Text,
-  Title,
-} from '@mantine/core';
+  Heading as Title,
+} from '@robert-stackflow/oneui/Layout';
+import { CopyButton } from '@robert-stackflow/oneui/CopyButton';
+import { NumberInput } from '@robert-stackflow/oneui/NumberInput';
+import { TagInput as TagsInput } from '@robert-stackflow/oneui/TagInput';
+import { FormField } from '@robert-stackflow/oneui/FormField';
+import { useState } from 'react';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Copy } from 'lucide-react';
 import { Toggle } from './Toggle';
 import { api, notifyError, notifySuccess } from './api';
 import { Loading, ErrorState } from './components';
-
 interface Policy {
   enabled: boolean;
   origins: string[];
@@ -48,9 +50,9 @@ function Editor({
   const app = useQuery({
     queryKey: ['application', id, uid],
     queryFn: () =>
-      api<{ appId: string } | null>(
-        `/instances/${id}/sites/${uid}/application`,
-      ),
+      api<{
+        appId: string;
+      } | null>(`/instances/${id}/sites/${uid}/application`),
   });
   const endpoint = app.data
     ? `${window.location.origin}/api/apps/${app.data.appId}/search`
@@ -71,91 +73,79 @@ function Editor({
   return (
     <Stack gap="lg">
       <Title order={3}>站点访问</Title>
-      <Paper withBorder>
-        <div className="site-setting">
-          <div className="site-setting-head">
-            <div>
-              <Text size="sm" fw={600}>
-                公开搜索入口
-              </Text>
-              <Text size="xs" c="dimmed" mt={6}>
-                允许网站通过 OneSearch 搜索当前索引。
-              </Text>
-            </div>
+      <Card>
+        <Stack gap="xl">
+          <SettingRow
+            title="公开搜索入口"
+            description="允许网站通过 OneSearch 搜索当前索引。"
+            divider={false}
+          >
             <Toggle
               aria-label="启用公开搜索入口"
               checked={p.enabled}
-              onChange={(e) => {
-                const enabled = e.currentTarget.checked;
-                setP((v) => ({ ...v, enabled }));
-              }}
+              onChange={(enabled) => setP((v) => ({ ...v, enabled }))}
             />
-          </div>
-        </div>
-        <div className="site-setting">
-          <Text size="sm" fw={600}>
-            来源限制
-          </Text>
-          <div className="site-setting-body">
-            <TagsInput
-              label="允许的站点"
-              description="填写协议与域名，可包含端口；末尾 / 会自动移除，不支持具体页面路径。"
-              placeholder="输入站点后按回车"
-              value={p.origins}
-              onChange={(origins) => setP((v) => ({ ...v, origins }))}
-            />
-          </div>
-          <div className="site-setting-head" style={{ marginTop: 20 }}>
-            <div>
-              <Text size="sm">必须提供来源</Text>
-              <Text size="xs" c="dimmed" mt={5}>
-                检查 Origin 或 Referer；关闭后允许无来源的服务器请求。
-              </Text>
-            </div>
+          </SettingRow>
+          <TagsInput
+            label="允许的站点"
+            placeholder="输入站点后按回车"
+            value={p.origins}
+            onChange={(origins) => setP((v) => ({ ...v, origins }))}
+            hint="填写协议与域名，可包含端口；不支持具体页面路径。"
+            maxTagLength={2048}
+            caseSensitive
+          />
+          <SettingRow
+            title="必须提供来源"
+            description="检查 Origin 或 Referer；关闭后允许无来源的服务器请求。"
+            divider={false}
+          >
             <Toggle
               aria-label="必须提供来源"
               checked={p.requireOrigin}
-              onChange={(e) => {
-                const requireOrigin = e.currentTarget.checked;
-                setP((v) => ({ ...v, requireOrigin }));
-              }}
-            />
-          </div>
-        </div>
-        <div className="site-setting">
-          <Text size="sm" fw={600} mb="md">
-            请求限制
-          </Text>
-          <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="lg">
-            <NumberInput
-              label="每个 IP 的请求频率"
-              suffix=" 次 / 分钟"
-              min={1}
-              max={1000}
-              value={p.rate}
-              onChange={(value) => setP((v) => ({ ...v, rate: Number(value) }))}
-            />
-            <NumberInput
-              label="每次返回结果上限"
-              suffix=" 条"
-              min={1}
-              max={100}
-              value={p.maxLimit}
-              onChange={(value) =>
-                setP((v) => ({ ...v, maxLimit: Number(value) }))
+              onChange={(requireOrigin) =>
+                setP((v) => ({ ...v, requireOrigin }))
               }
             />
+          </SettingRow>
+          <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="lg">
+            <FormField label="每个 IP 的请求频率">
+              <NumberInput
+                label="每个 IP 的请求频率"
+                min={1}
+                max={1000}
+                value={Number(p.rate)}
+                onChange={(rate) => setP((v) => ({ ...v, rate: Number(rate) }))}
+                unit="次 / 分钟"
+              />
+            </FormField>
+            <FormField label="每次返回结果上限">
+              <NumberInput
+                label="每次返回结果上限"
+                min={1}
+                max={100}
+                value={Number(p.maxLimit)}
+                onChange={(maxLimit) =>
+                  setP((v) => ({ ...v, maxLimit: Number(maxLimit) }))
+                }
+                unit="条"
+              />
+            </FormField>
           </SimpleGrid>
-        </div>
-        <div className="save-bar">
-          <Text size="xs" c="dimmed">
-            规则只作用于下方公开入口。
-          </Text>
-          <Button loading={save.isPending} onClick={() => save.mutate()}>
-            保存规则
-          </Button>
-        </div>
-      </Paper>
+          <Group justify="space-between">
+            <Text size="xs" c="dimmed">
+              规则只作用于下方公开入口。
+            </Text>
+            <Button
+              loading={save.isPending}
+              onClick={() => save.mutate()}
+              variant="primary"
+            >
+              保存规则
+            </Button>
+          </Group>
+        </Stack>
+      </Card>
       <Paper withBorder p="lg">
         <Group justify="space-between" mb="sm">
           <Text size="sm" fw={600}>
@@ -163,12 +153,8 @@ function Editor({
           </Text>
           <CopyButton value={endpoint}>
             {({ copy, copied }) => (
-              <Button
-                size="xs"
-                variant="subtle"
-                leftSection={<Copy size={14} />}
-                onClick={copy}
-              >
+              <Button onClick={copy} variant="ghost" size="small">
+                {<Copy size={14} />}
                 {copied ? '已复制' : '复制地址'}
               </Button>
             )}

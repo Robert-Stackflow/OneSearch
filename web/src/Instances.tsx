@@ -1,34 +1,28 @@
-import { useState } from 'react';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { SearchField } from '@robert-stackflow/oneui/SearchField';
+import { ResourceCard } from '@robert-stackflow/oneui/ResourceCard';
+import { useLinkClickHandler } from 'react-router-dom';
+import { Statistic } from '@robert-stackflow/oneui/Statistic';
+import { Card } from '@robert-stackflow/oneui/Card';
+import { Alert } from '@robert-stackflow/oneui/Alert';
+import { Button } from '@robert-stackflow/oneui/Button';
 import {
-  Alert,
-  Button,
   Group,
-  Modal,
-  NumberInput,
-  Paper,
-  SegmentedControl,
   SimpleGrid,
   Stack,
   Text,
-  TextInput,
-  Textarea,
-  ThemeIcon,
-  Title,
-} from '@mantine/core';
-import {
-  ArrowRight,
-  Boxes,
-  Check,
-  CirclePause,
-  Cpu,
-  HardDrive,
-  Plus,
-  Search,
-  Server,
-  ArrowUpRight,
-} from 'lucide-react';
-import { Link, useNavigate } from 'react-router-dom';
+  Heading as Title,
+  Box,
+} from '@robert-stackflow/oneui/Layout';
+import { Dialog as Modal } from '@robert-stackflow/oneui/Dialog';
+import { NumberInput } from '@robert-stackflow/oneui/NumberInput';
+import { Segmented as SegmentedControl } from '@robert-stackflow/oneui/Segmented';
+import { Input as TextInput } from '@robert-stackflow/oneui/Input';
+import { Textarea } from '@robert-stackflow/oneui/Textarea';
+import { FormField } from '@robert-stackflow/oneui/FormField';
+import { useState } from 'react';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { Plus, Server, ArrowUpRight } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import {
   api,
   notifyError,
@@ -62,7 +56,9 @@ export function CreateInstance({
   const navigate = useNavigate();
   const mutation = useMutation({
     mutationFn: () =>
-      api<{ instance: Instance }>('/instances', {
+      api<{
+        instance: Instance;
+      }>('/instances', {
         method: 'POST',
         body: JSON.stringify({
           name,
@@ -90,13 +86,7 @@ export function CreateInstance({
     onError: notifyError,
   });
   return (
-    <Modal
-      opened={opened}
-      onClose={onClose}
-      title="添加搜索实例"
-      size="lg"
-      centered
-    >
+    <Modal onClose={onClose} title="添加搜索实例" open={opened} size="large">
       <form
         onSubmit={(e) => {
           e.preventDefault();
@@ -105,11 +95,10 @@ export function CreateInstance({
       >
         <Stack gap="lg">
           <SegmentedControl
-            aria-label="实例添加方式"
-            fullWidth
             value={provider}
             onChange={setProvider}
-            data={[
+            label="实例添加方式"
+            options={[
               { value: 'native', label: '创建实例' },
               ...(!production
                 ? [{ value: 'external', label: '接入已有实例' }]
@@ -127,30 +116,34 @@ export function CreateInstance({
           <Textarea
             label="描述"
             placeholder="可选"
-            minRows={3}
             value={description}
             onChange={(e) => setDescription(e.currentTarget.value)}
             maxLength={300}
+            rows={3}
           />
           {provider === 'native' ? (
             <>
               <SimpleGrid cols={2}>
-                <NumberInput
-                  label="索引内存预算"
-                  suffix=" MiB"
-                  min={128}
-                  max={8192}
-                  step={128}
-                  value={memory}
-                  onChange={setMemory}
-                />
-                <NumberInput
-                  label="索引线程"
-                  min={1}
-                  max={16}
-                  value={threads}
-                  onChange={setThreads}
-                />
+                <FormField label="索引内存预算">
+                  <NumberInput
+                    label="索引内存预算"
+                    min={128}
+                    max={8192}
+                    step={128}
+                    onChange={setMemory}
+                    value={Number(memory)}
+                    unit=" MiB"
+                  />
+                </FormField>
+                <FormField label="索引线程">
+                  <NumberInput
+                    label="索引线程"
+                    min={1}
+                    max={16}
+                    onChange={setThreads}
+                    value={Number(threads)}
+                  />
+                </FormField>
               </SimpleGrid>
               <Text size="xs" c="dimmed">
                 {production
@@ -180,10 +173,14 @@ export function CreateInstance({
             </>
           )}
           <Group justify="flex-end" className="form-actions">
-            <Button variant="default" onClick={onClose}>
+            <Button onClick={onClose} variant="secondary">
               取消
             </Button>
-            <Button type="submit" loading={mutation.isPending}>
+            <Button
+              type="submit"
+              loading={mutation.isPending}
+              variant="primary"
+            >
               {provider === 'native' ? '创建实例' : '连接实例'}
             </Button>
           </Group>
@@ -193,52 +190,30 @@ export function CreateInstance({
   );
 }
 function InstanceCard({ instance: i }: { instance: Instance }) {
+  const href = `/instances/${i.id}`;
+  const navigate = useLinkClickHandler(href);
   return (
-    <Paper
-      component={Link}
-      to={`/instances/${i.id}`}
-      withBorder
-      p="xl"
-      className="instance-card"
-    >
-      <Group justify="space-between" align="flex-start">
-        <ThemeIcon variant="light" size={45} radius={13}>
-          <Server size={22} strokeWidth={1.6} />
-        </ThemeIcon>
-        <Status value={i.status} />
-      </Group>
-      <Title order={4} mt={20}>
-        {i.name}
-      </Title>
-      <Text size="sm" c="dimmed" mt={7} mih={42} lineClamp={2}>
-        {i.description}
-      </Text>
-      <div className="instance-meta">
-        <Group gap={7}>
-          <HardDrive size={14} />
-          <Text size="xs">
-            {i.provider !== 'external'
-              ? `${i.memoryMB} MiB 索引预算`
-              : '已接入服务'}
-          </Text>
-        </Group>
-        <Group gap={7}>
-          <Cpu size={14} />
-          <Text size="xs">{i.version ? `v${i.version}` : '正在准备'}</Text>
-        </Group>
-      </div>
-      <Group justify="space-between" pt="md" mt="md" className="card-bottom">
-        <Text size="xs" c="dimmed">
-          {i.provider === 'docker' ? '内部服务' : `127.0.0.1:${i.port}`}
-        </Text>
-        <Group gap={6}>
-          <Text size="xs" fw={600}>
-            管理实例
-          </Text>
-          <ArrowRight size={15} />
-        </Group>
-      </Group>
-    </Paper>
+    <ResourceCard
+      href={href}
+      onClick={navigate}
+      title={i.name}
+      icon={<Server />}
+      status={<Status value={i.status} />}
+      subtitle={
+        i.provider === 'docker'
+          ? '托管实例'
+          : i.provider === 'external'
+            ? '外部实例'
+            : '本地实例'
+      }
+      description={i.description || undefined}
+      metadata={[
+        i.version ? `v${i.version}` : '准备中',
+        i.provider === 'external'
+          ? i.host
+          : `${i.memoryMB} MiB · ${i.threads} 线程`,
+      ]}
+    />
   );
 }
 export default function Instances({
@@ -273,81 +248,68 @@ export default function Instances({
     );
   });
   const metrics = [
-    { label: '搜索实例', value: live.length, icon: Boxes },
+    { label: '搜索实例', value: live.length },
     {
       label: '正在运行',
       value: live.filter((i) => i.status === 'running').length,
-      icon: Check,
     },
     {
       label: '已停止',
       value: live.filter((i) => i.status === 'stopped').length,
-      icon: CirclePause,
     },
     {
       label: '运行环境',
       value: sys.data?.runtime === 'docker' ? 'Docker' : 'Native',
-      icon: Cpu,
     },
   ];
   return (
     <>
       <PageTitle title={dashboard ? '工作台' : '搜索实例'}>
-        <Button
-          leftSection={<Plus size={17} />}
-          onClick={() => setOpened(true)}
-        >
+        <Button onClick={() => setOpened(true)} variant="primary">
+          {<Plus size={17} />}
           添加实例
         </Button>
       </PageTitle>
       {dashboard ? (
         <>
-          <SimpleGrid cols={{ base: 2, lg: 4 }} mb={28}>
-            {metrics.map((m) => (
-              <Paper withBorder p="xl" key={m.label}>
-                <Group justify="space-between">
-                  <Text size="sm" c="dimmed">
-                    {m.label}
-                  </Text>
-                  <m.icon
-                    size={20}
-                    strokeWidth={1.5}
-                    color="var(--os-accent)"
+          <div className="dashboard-summary">
+            <SimpleGrid cols={{ base: 2, sm: 4 }} spacing="md">
+              {metrics.map((metric) => (
+                <Card key={metric.label}>
+                  <Statistic
+                    title={metric.label}
+                    value={metric.value}
+                    loading={query.isPending}
+                    animate={false}
                   />
-                </Group>
-                <Text fz={32} fw={650} mt={10}>
-                  {query.isPending ? '—' : m.value}
-                </Text>
-              </Paper>
-            ))}
-          </SimpleGrid>
+                </Card>
+              ))}
+            </SimpleGrid>
+          </div>
           <Calendar />
           <Group justify="space-between" mb={18}>
             <Title order={3}>搜索实例</Title>
-            <Button
-              component={Link}
-              to="/instances"
-              variant="subtle"
-              rightSection={<ArrowUpRight size={16} />}
-            >
+            <Button variant="ghost" href="/instances">
               查看全部
+              {<ArrowUpRight size={16} />}
             </Button>
           </Group>
         </>
       ) : (
-        <Group justify="space-between" mb={22}>
-          <TextInput
-            placeholder="搜索名称或描述"
-            leftSection={<Search size={16} />}
-            value={search}
-            onChange={(e) => setSearch(e.currentTarget.value)}
-            w={300}
-          />
+        <Group className="instance-filter" justify="space-between" mb={22}>
+          <Box style={{ width: 300 }}>
+            <SearchField
+              label="搜索实例"
+              placeholder="搜索名称或描述"
+              value={search}
+              onChange={setSearch}
+            />
+          </Box>
           <SegmentedControl
-            aria-label="实例状态"
             value={filter}
             onChange={setFilter}
-            data={[
+            label="实例状态"
+            options={[
               { value: 'all', label: '全部' },
               { value: 'running', label: '运行中' },
               { value: 'starting', label: '启动中' },
@@ -358,11 +320,13 @@ export default function Instances({
         </Group>
       )}
       {sys.data && !sys.data.runtimeAvailable ? (
-        <Alert color="orange" mb="lg" title="搜索运行时尚未就绪">
-          {sys.data.mode === 'production'
-            ? '请检查 Docker 服务和搜索引擎镜像。'
-            : '请设置 MEILISEARCH_BINARY 后重启后端；也可先接入已有实例。'}
-        </Alert>
+        <Box style={{ marginBottom: 20 }}>
+          <Alert title="搜索运行时尚未就绪" tone={'warning'}>
+            {sys.data.mode === 'production'
+              ? '请检查 Docker 服务和搜索引擎镜像。'
+              : '请设置 MEILISEARCH_BINARY 后重启后端；也可先接入已有实例。'}
+          </Alert>
+        </Box>
       ) : null}
       {query.isPending ? (
         <Loading />
@@ -384,19 +348,17 @@ export default function Instances({
         >
           {!dashboard && (search || filter !== 'all') ? (
             <Button
-              variant="default"
               onClick={() => {
                 setSearch('');
                 setFilter('all');
               }}
+              variant="secondary"
             >
               查看全部
             </Button>
           ) : (
-            <Button
-              onClick={() => setOpened(true)}
-              leftSection={<Plus size={17} />}
-            >
+            <Button onClick={() => setOpened(true)} variant="primary">
+              {<Plus size={17} />}
               添加实例
             </Button>
           )}

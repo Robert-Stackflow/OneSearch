@@ -1,19 +1,21 @@
+import { Alert } from '@robert-stackflow/oneui/Alert';
+import { Button } from '@robert-stackflow/oneui/Button';
+import {
+  Group,
+  Surface as Paper,
+  Stack,
+  Text,
+  Box,
+} from '@robert-stackflow/oneui/Layout';
+import { Dialog as Modal } from '@robert-stackflow/oneui/Dialog';
+import { PasswordField as PasswordInput } from '@robert-stackflow/oneui/PasswordField';
+import { Select } from '@robert-stackflow/oneui/Select';
+import { TableMarkup as Table } from '@robert-stackflow/oneui/TableMarkup';
+import { Input as TextInput } from '@robert-stackflow/oneui/Input';
+import { FormField } from '@robert-stackflow/oneui/FormField';
 import { useState } from 'react';
 import AutoBackups from './AutoBackups';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import {
-  Alert,
-  Button,
-  Group,
-  Modal,
-  Paper,
-  PasswordInput,
-  Select,
-  Stack,
-  Table,
-  Text,
-  TextInput,
-} from '@mantine/core';
 import { Download, Plus } from 'lucide-react';
 import {
   ApiError,
@@ -47,7 +49,10 @@ export default function Backups() {
   const security = useQuery({
     queryKey: ['security'],
     queryFn: () =>
-      api<{ totpEnabled: boolean; verifiedUntil: number }>('/security'),
+      api<{
+        totpEnabled: boolean;
+        verifiedUntil: number;
+      }>('/security'),
   });
   const q = useQuery({
     queryKey: ['backups'],
@@ -101,14 +106,17 @@ export default function Backups() {
         title="备份"
         description="把平台配置和搜索数据分别备份，文件使用你提供的密码加密。"
       >
-        <Button leftSection={<Plus size={16} />} onClick={() => setOpen(true)}>
+        <Button onClick={() => setOpen(true)} variant="primary">
+          {<Plus size={16} />}
           创建备份
         </Button>
       </PageTitle>
-      <Alert color="blue" mb="xl">
-        平台备份包含账户、通行密钥、设置、请求历史和实例凭据，不包含搜索数据及登录会话。搜索数据备份使用
-        Meilisearch dump。恢复操作使用离线工具，操作说明见设计文档。
-      </Alert>
+      <Box style={{ marginBottom: 24 }}>
+        <Alert tone={'info'}>
+          平台备份包含账户、通行密钥、设置、请求历史和实例凭据，不包含搜索数据及登录会话。搜索数据备份使用
+          Meilisearch dump。恢复操作使用离线工具，操作说明见设计文档。
+        </Alert>
+      </Box>
       <AutoBackups />
       {q.isPending ? (
         <Loading />
@@ -121,8 +129,8 @@ export default function Backups() {
         />
       ) : (
         <Paper withBorder>
-          <Table.ScrollContainer minWidth={720}>
-            <Table horizontalSpacing="xl" verticalSpacing="lg">
+          <Table.ScrollContainer minWidth={640}>
+            <Table>
               <Table.Thead>
                 <Table.Tr>
                   <Table.Th>类型</Table.Th>
@@ -166,12 +174,11 @@ export default function Backups() {
                     <Table.Td>
                       {b.status === 'succeeded' ? (
                         <Button
-                          component="a"
                           href={`/api/backups/${b.id}/download`}
-                          variant="light"
-                          size="xs"
-                          leftSection={<Download size={14} />}
+                          variant="secondary"
+                          size="small"
                         >
+                          {<Download size={14} />}
                           下载
                         </Button>
                       ) : null}
@@ -184,43 +191,46 @@ export default function Backups() {
         </Paper>
       )}
       <Modal
-        opened={open}
         onClose={() => {
           setOpen(false);
           setPassword('');
         }}
         title="创建加密备份"
-        centered
+        open={open}
       >
         <Stack>
-          <Select
-            label="备份类型"
-            value={kind}
-            onChange={(v) => setKind(v || 'platform')}
-            data={[
-              { value: 'platform', label: '平台配置（不含搜索数据）' },
-              { value: 'dump', label: '搜索数据（单实例 dump）' },
-            ]}
-          />
-          {kind === 'dump' ? (
+          <FormField label="备份类型">
             <Select
-              label="实例"
-              required
-              data={(instances.data || [])
-                .filter(
-                  (i) => i.provider !== 'external' && i.status === 'running',
-                )
-                .map((i) => ({ value: i.id, label: i.name }))}
-              value={instance}
-              onChange={setInstance}
-              placeholder="选择运行中的托管实例"
+              label="备份类型"
+              onChange={(v) => setKind(v || 'platform')}
+              options={[
+                { value: 'platform', label: '平台配置（不含搜索数据）' },
+                { value: 'dump', label: '搜索数据（单实例 dump）' },
+              ]}
+              value={kind ?? ''}
             />
+          </FormField>
+          {kind === 'dump' ? (
+            <FormField label="实例" required>
+              <Select
+                label="实例"
+                required
+                onChange={setInstance}
+                placeholder="选择运行中的托管实例"
+                options={(instances.data || [])
+                  .filter(
+                    (i) => i.provider !== 'external' && i.status === 'running',
+                  )
+                  .map((i) => ({ value: i.id, label: i.name }))}
+                value={instance ?? ''}
+              />
+            </FormField>
           ) : null}
           <PasswordInput
             label="备份密码"
-            description="至少 12 位，恢复时需要此密码。平台不保存密码。"
             value={password}
-            onChange={(e) => setPassword(e.currentTarget.value)}
+            hint="至少 12 位，恢复时需要此密码。平台不保存密码。"
+            onChange={(e) => setPassword(e)}
           />
           <Button
             disabled={password.length < 12 || (kind === 'dump' && !instance)}
@@ -230,20 +240,20 @@ export default function Backups() {
                 setVerifyOpen(true);
               else create.mutate();
             }}
+            variant="primary"
           >
             开始备份
           </Button>
         </Stack>
       </Modal>
       <Modal
-        opened={verifyOpen}
         onClose={() => {
           setVerifyOpen(false);
           setCurrentPassword('');
           setOTP('');
         }}
         title="验证身份"
-        centered
+        open={verifyOpen}
       >
         <form
           onSubmit={(e) => {
@@ -257,7 +267,7 @@ export default function Backups() {
               required
               autoComplete="current-password"
               value={currentPassword}
-              onChange={(e) => setCurrentPassword(e.currentTarget.value)}
+              onChange={(e) => setCurrentPassword(e)}
             />
             {security.data?.totpEnabled ? (
               <TextInput
@@ -269,16 +279,20 @@ export default function Backups() {
             ) : null}
             <Group justify="flex-end" className="form-actions">
               <Button
-                variant="default"
                 onClick={() => {
                   setVerifyOpen(false);
                   setCurrentPassword('');
                   setOTP('');
                 }}
+                variant="secondary"
               >
                 取消
               </Button>
-              <Button type="submit" loading={verify.isPending}>
+              <Button
+                type="submit"
+                loading={verify.isPending}
+                variant="primary"
+              >
                 验证并继续
               </Button>
             </Group>

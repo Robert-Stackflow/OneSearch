@@ -1,17 +1,16 @@
-import { useState } from 'react';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { Avatar } from '@robert-stackflow/oneui/Avatar';
+import { Button } from '@robert-stackflow/oneui/Button';
 import {
-  Avatar,
-  Button,
-  FileButton,
   Group,
-  Paper,
+  Surface as Paper,
   Stack,
   Text,
-  TextInput,
-  Title,
-} from '@mantine/core';
-import { Upload } from 'lucide-react';
+  Heading as Title,
+} from '@robert-stackflow/oneui/Layout';
+import { Input as TextInput } from '@robert-stackflow/oneui/Input';
+import { FilePicker } from '@robert-stackflow/oneui/FilePicker';
+import { useState } from 'react';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api, notifyError, notifySuccess, type AccountInfo } from './api';
 import { Loading, ErrorState } from './components';
 export default function Account() {
@@ -71,33 +70,22 @@ function ProfileForm({ account }: { account: AccountInfo }) {
       <Stack gap="xl">
         <Group>
           <Avatar
+            name={account.name || account.username}
             src={account.avatarUrl || undefined}
             size={64}
-            radius="xl"
-            color="victoria"
-          >
-            {account.name.slice(0, 1).toUpperCase()}
-          </Avatar>
+            fallback={<>{account.name.slice(0, 1).toUpperCase()}</>}
+          />
           <Title order={3}>账户资料</Title>
         </Group>
         <Group className="profile-upload">
-          <FileButton
-            onChange={(file) => {
-              if (file) upload.mutate(file);
-            }}
+          <FilePicker
+            label="上传头像"
             accept="image/jpeg,image/png,image/gif"
-          >
-            {(props) => (
-              <Button
-                {...props}
-                variant="light"
-                loading={upload.isPending}
-                leftSection={<Upload size={16} />}
-              >
-                上传头像
-              </Button>
-            )}
-          </FileButton>
+            maxSize={5 * 1024 * 1024}
+            disabled={upload.isPending}
+            onFiles={(files) => upload.mutate(files[0])}
+          />
+
           <Text size="xs" c="dimmed">
             JPG、PNG、GIF · 最大 5 MiB
           </Text>
@@ -122,6 +110,7 @@ function ProfileForm({ account }: { account: AccountInfo }) {
                 type="submit"
                 loading={save.isPending}
                 disabled={!name.trim() || name === account.name}
+                variant="primary"
               >
                 保存资料
               </Button>

@@ -1,24 +1,27 @@
-import { Fragment, useEffect, useState } from 'react';
-import { Link, useParams, useSearchParams } from 'react-router-dom';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { Descriptions } from '@robert-stackflow/oneui/Descriptions';
+import { SettingsLayout } from '@robert-stackflow/oneui/SettingsLayout';
+import { Alert } from '@robert-stackflow/oneui/Alert';
 import {
-  Alert,
   Button,
+  Button as UnstyledButton,
+} from '@robert-stackflow/oneui/Button';
+import {
   Code,
   Group,
-  Menu,
-  Modal,
-  NavLink,
-  Paper,
-  Select,
-  SimpleGrid,
+  Surface as Paper,
   Stack,
-  Table,
   Text,
-  TextInput,
-  Title,
-  UnstyledButton,
-} from '@mantine/core';
+  Heading as Title,
+  Box,
+} from '@robert-stackflow/oneui/Layout';
+import { Menu } from '@robert-stackflow/oneui/Menu';
+import { Dialog as Modal } from '@robert-stackflow/oneui/Dialog';
+import { Combobox } from '@robert-stackflow/oneui/Combobox';
+import { TableMarkup as Table } from '@robert-stackflow/oneui/TableMarkup';
+import { Input as TextInput } from '@robert-stackflow/oneui/Input';
+import { useEffect, useState } from 'react';
+import { useParams, useSearchParams } from 'react-router-dom';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   Activity,
   BarChart3,
@@ -132,7 +135,12 @@ export default function InstancePage() {
     queryFn: () =>
       engine<{
         databaseSize: number;
-        indexes: Record<string, { numberOfDocuments: number }>;
+        indexes: Record<
+          string,
+          {
+            numberOfDocuments: number;
+          }
+        >;
       }>(id, 'stats'),
     enabled: i?.status === 'running',
     refetchInterval: 5000,
@@ -184,160 +192,138 @@ export default function InstancePage() {
   const indexed = sections.find((x) => x.value === section)?.index;
   return (
     <>
-      <Button
-        component={Link}
-        to="/instances"
-        variant="subtle"
-        size="xs"
-        leftSection={<ArrowLeft size={14} />}
-        mb={20}
-      >
-        搜索实例
-      </Button>
+      <Box style={{ marginBottom: 20 }}>
+        <Button variant="ghost" size="small" href="/instances">
+          {<ArrowLeft size={14} />}
+          搜索实例
+        </Button>
+      </Box>
       <PageTitle
         title={i.name}
         description={i.description || undefined}
         titleExtra={
-          <Select
-            aria-label="当前索引"
-            placeholder="选择索引"
-            data={list.map((x) => x.uid)}
-            value={index}
-            onChange={setSelected}
-            searchable
-            w={240}
-            disabled={!list.length || i.status !== 'running'}
-            className="instance-index-picker"
-          />
+          <Box style={{ width: 240 }}>
+            <Combobox
+              placeholder="选择索引"
+              onChange={setSelected}
+              disabled={!list.length || i.status !== 'running'}
+              options={list.map((x) => ({ value: x.uid, label: x.uid }))}
+              label="当前索引"
+              value={index ?? ''}
+            />
+          </Box>
         }
       >
         <Group>
           <Status value={i.status} />
           {i.canControl && i.status !== 'archived' ? (
             i.status === 'running' ? (
-              <Button
-                variant="default"
-                leftSection={<Square size={14} />}
-                onClick={() => setAction('stop')}
-              >
+              <Button onClick={() => setAction('stop')} variant="secondary">
+                {<Square size={14} />}
                 停止
               </Button>
             ) : (
               <Button
-                leftSection={<Play size={15} />}
                 disabled={['provisioning', 'starting', 'stopping'].includes(
                   i.status,
                 )}
                 onClick={() => setAction('start')}
+                variant="primary"
               >
+                {<Play size={15} />}
                 启动
               </Button>
             )
           ) : null}
-          <Menu position="bottom-end">
-            <Menu.Target>
-              <Button variant="default" px={12} aria-label="实例操作">
-                <MoreHorizontal size={19} />
-              </Button>
-            </Menu.Target>
-            <Menu.Dropdown>
-              {i.canControl && i.status === 'running' ? (
-                <Menu.Item
-                  leftSection={<RotateCw size={15} />}
-                  onClick={() => setAction('restart')}
-                >
-                  重启实例
-                </Menu.Item>
-              ) : null}
-              <Menu.Item
-                leftSection={<ListChecks size={15} />}
-                onClick={() => setSection('operations')}
-              >
-                查看操作记录
-              </Menu.Item>
-              {i.status !== 'archived' &&
-              (i.provider === 'external' || i.canControl) ? (
-                <>
-                  <Menu.Divider />
-                  <Menu.Item
-                    color="orange"
-                    leftSection={<Archive size={15} />}
-                    onClick={() => setAction('archive')}
-                  >
-                    归档实例
-                  </Menu.Item>
-                </>
-              ) : null}
-            </Menu.Dropdown>
-          </Menu>
+          <Menu
+            label="实例操作"
+            trigger={<MoreHorizontal size={19} />}
+            items={[
+              ...(i.canControl && i.status === 'running'
+                ? [
+                    {
+                      label: '重启实例',
+                      icon: <RotateCw size={15} />,
+                      action: () => setAction('restart'),
+                    },
+                  ]
+                : []),
+              {
+                label: '查看操作记录',
+                icon: <ListChecks size={15} />,
+                action: () => setSection('operations'),
+              },
+              ...(i.status !== 'archived' &&
+              (i.provider === 'external' || i.canControl)
+                ? [
+                    {
+                      label: '归档实例',
+                      icon: <Archive size={15} />,
+                      danger: true,
+                      action: () => setAction('archive'),
+                    },
+                  ]
+                : []),
+            ]}
+          />
         </Group>
       </PageTitle>
-      <Paper withBorder p="lg" mb={26}>
-        <SimpleGrid cols={{ base: 2, lg: 4 }} spacing="xl">
-          <div>
-            <Text size="xs" c="dimmed">
-              服务地址
-            </Text>
-            <Text size="sm" fw={500} mt={8}>
-              {i.host}
-            </Text>
-          </div>
-          <div>
-            <Text size="xs" c="dimmed">
-              引擎版本
-            </Text>
-            <Text size="sm" fw={500} mt={8}>
-              {i.version || '—'}
-            </Text>
-          </div>
-          <div>
-            <Text size="xs" c="dimmed">
-              索引 / 文档
-            </Text>
-            <Text size="sm" fw={500} mt={8}>
-              {indexes.data?.total ?? '—'} / {count ?? '—'}
-            </Text>
-          </div>
-          <div>
-            <Text size="xs" c="dimmed">
-              数据库大小
-            </Text>
-            <Text size="sm" fw={500} mt={8}>
-              {stats.data
+      <Paper p="lg" mb="xl">
+        <Descriptions
+          columns={4}
+          layout="vertical"
+          label="实例信息"
+          items={[
+            { key: 'address', label: '服务地址', children: i.host },
+            { key: 'version', label: '引擎版本', children: i.version || '—' },
+            {
+              key: 'documents',
+              label: '索引 / 文档',
+              children: `${indexes.data?.total ?? '—'} / ${count ?? '—'}`,
+            },
+            {
+              key: 'size',
+              label: '数据库大小',
+              children: stats.data
                 ? `${(stats.data.databaseSize / 1048576).toFixed(1)} MiB`
-                : '—'}
-            </Text>
-          </div>
-        </SimpleGrid>
+                : '—',
+            },
+          ]}
+        />
       </Paper>
       {i.error ? (
-        <Alert color="red" mb="lg">
-          {i.error}
-        </Alert>
+        <Box style={{ marginBottom: 20 }}>
+          <Alert tone={'danger'}>{i.error}</Alert>
+        </Box>
       ) : null}
-      <div className="settings-layout instance-layout">
-        <Paper
-          component="nav"
-          aria-label="实例管理"
-          withBorder
-          p="xs"
-          className="settings-navigation instance-navigation"
-        >
-          {sections.map(({ value, label, icon: Icon }) => (
-            <Fragment key={value}>
-              {['documents', 'sites', 'history'].includes(value) && (
-                <div className="instance-navigation-divider" role="separator" />
-              )}
-              <NavLink
-                label={label}
-                leftSection={<Icon size={18} />}
-                active={section === value}
-                onClick={() => setSection(value)}
-                className="studio-nav"
-              />
-            </Fragment>
-          ))}
-        </Paper>
+      <SettingsLayout
+        value={section}
+        onChange={setSection}
+        groups={[
+          { id: 'overview', label: '概览', values: ['overview'] },
+          {
+            id: 'content',
+            label: '内容与搜索',
+            values: ['indexes', 'documents', 'settings', 'tasks'],
+          },
+          { id: 'access', label: '接入与权限', values: ['sites', 'keys'] },
+          {
+            id: 'activity',
+            label: '运行记录',
+            values: ['history', 'operations', 'logs'],
+          },
+        ].map(({ id, label, values }) => ({
+          id,
+          label,
+          items: sections
+            .filter((item) => values.includes(item.value))
+            .map(({ value, label, icon: Icon }) => ({
+              value,
+              label,
+              icon: <Icon size={17} />,
+            })),
+        }))}
+      >
         <div className="instance-content">
           {!['logs', 'overview', 'operations', 'history'].includes(section) &&
           i.status !== 'running' ? (
@@ -345,7 +331,9 @@ export default function InstancePage() {
               title={i.status === 'archived' ? '实例已归档' : '实例未运行'}
             >
               {i.canControl && i.status === 'stopped' ? (
-                <Button onClick={() => setAction('start')}>启动实例</Button>
+                <Button onClick={() => setAction('start')} variant="primary">
+                  启动实例
+                </Button>
               ) : null}
             </Empty>
           ) : indexed && !index ? (
@@ -355,6 +343,7 @@ export default function InstancePage() {
                   setSection('indexes');
                   setCreateOpen(true);
                 }}
+                variant="primary"
               >
                 创建索引
               </Button>
@@ -375,9 +364,10 @@ export default function InstancePage() {
                   <Group justify="space-between" mb="lg">
                     <Title order={3}>索引</Title>
                     <Button
-                      leftSection={<Plus size={16} />}
                       onClick={() => setCreateOpen(true)}
+                      variant="primary"
                     >
+                      {<Plus size={16} />}
                       创建索引
                     </Button>
                   </Group>
@@ -390,7 +380,7 @@ export default function InstancePage() {
                   ) : (
                     <Paper withBorder>
                       <Table.ScrollContainer minWidth={570}>
-                        <Table horizontalSpacing="xl" verticalSpacing="lg">
+                        <Table>
                           <Table.Thead>
                             <Table.Tr>
                               <Table.Th>索引</Table.Th>
@@ -405,10 +395,10 @@ export default function InstancePage() {
                               <Table.Tr key={x.uid}>
                                 <Table.Td>
                                   <UnstyledButton
-                                    className="table-text-action"
                                     onClick={() =>
                                       selectIndex(x.uid, 'documents')
                                     }
+                                    variant="link"
                                   >
                                     {x.uid}
                                   </UnstyledButton>
@@ -428,20 +418,20 @@ export default function InstancePage() {
                                 <Table.Td>
                                   <Group gap={4} wrap="nowrap">
                                     <Button
-                                      variant="subtle"
-                                      size="xs"
                                       onClick={() => {
                                         selectIndex(x.uid, 'documents');
                                       }}
+                                      variant="ghost"
+                                      size="small"
                                     >
                                       文档
                                     </Button>
                                     <Button
-                                      variant="subtle"
-                                      size="xs"
                                       onClick={() => {
                                         selectIndex(x.uid, 'settings');
                                       }}
+                                      variant="ghost"
+                                      size="small"
                                     >
                                       设置
                                     </Button>
@@ -500,9 +490,8 @@ export default function InstancePage() {
             </>
           )}
         </div>
-      </div>
+      </SettingsLayout>
       <Modal
-        opened={!!action}
         onClose={() => setAction('')}
         title={
           {
@@ -510,9 +499,9 @@ export default function InstancePage() {
             start: '启动实例',
             restart: '重启实例',
             archive: '归档实例',
-          }[action]
+          }[action] || '实例操作'
         }
-        centered
+        open={!!action}
       >
         <Stack gap="lg">
           <Text size="sm">
@@ -525,17 +514,13 @@ export default function InstancePage() {
                   : '启动此实例。'}
           </Text>
           <Group justify="flex-end" className="form-actions">
-            <Button variant="default" onClick={() => setAction('')}>
+            <Button onClick={() => setAction('')} variant="secondary">
               取消
             </Button>
             <Button
               loading={actionMutation.isPending}
-              color={
-                action === 'archive' || action === 'stop'
-                  ? 'orange'
-                  : 'victoria'
-              }
               onClick={() => actionMutation.mutate()}
+              variant="primary"
             >
               确认
             </Button>
@@ -543,10 +528,9 @@ export default function InstancePage() {
         </Stack>
       </Modal>
       <Modal
-        opened={createOpen}
         onClose={() => setCreateOpen(false)}
         title="创建索引"
-        centered
+        open={createOpen}
       >
         <form
           onSubmit={(e) => {
@@ -562,7 +546,7 @@ export default function InstancePage() {
               onChange={(e) => setUID(e.currentTarget.value)}
               required
               pattern="[A-Za-z0-9_-]+"
-              description="英文字母、数字、短横线或下划线"
+              hint="英文字母、数字、短横线或下划线"
             />
             <TextInput
               label="文档主键"
@@ -570,10 +554,14 @@ export default function InstancePage() {
               onChange={(e) => setPrimaryKey(e.currentTarget.value)}
             />
             <Group justify="flex-end" className="form-actions">
-              <Button variant="default" onClick={() => setCreateOpen(false)}>
+              <Button onClick={() => setCreateOpen(false)} variant="secondary">
                 取消
               </Button>
-              <Button type="submit" loading={create.isPending}>
+              <Button
+                type="submit"
+                loading={create.isPending}
+                variant="primary"
+              >
                 创建索引
               </Button>
             </Group>

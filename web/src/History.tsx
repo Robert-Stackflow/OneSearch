@@ -1,21 +1,23 @@
+import { SearchField } from '@robert-stackflow/oneui/SearchField';
+import { Badge } from '@robert-stackflow/oneui/Badge';
+import {
+  Button,
+  Button as UnstyledButton,
+} from '@robert-stackflow/oneui/Button';
+import {
+  Code,
+  Box,
+  Group,
+  Surface as Paper,
+  Stack,
+  Text,
+} from '@robert-stackflow/oneui/Layout';
+import { Drawer } from '@robert-stackflow/oneui/Drawer';
+import { Pagination } from '@robert-stackflow/oneui/Pagination';
+import { Select } from '@robert-stackflow/oneui/Select';
+import { TableMarkup as Table } from '@robert-stackflow/oneui/TableMarkup';
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import {
-  Badge,
-  Button,
-  Code,
-  Drawer,
-  Group,
-  Pagination,
-  Paper,
-  Select,
-  Stack,
-  Table,
-  Text,
-  TextInput,
-  UnstyledButton,
-} from '@mantine/core';
-import { Search } from 'lucide-react';
 import { api, formatDate, type Instance, type Page } from './api';
 import { Empty, ErrorState, Loading } from './components';
 interface Entry {
@@ -62,55 +64,58 @@ export default function History({
   return (
     <>
       <Group mb="xl">
-        <TextInput
-          aria-label="搜索关键词筛选"
-          placeholder="查找搜索词"
-          leftSection={<Search size={16} />}
-          value={term}
-          onChange={(e) => setTerm(e.currentTarget.value)}
-          onKeyDown={(e) => {
-            if (e.key === 'Enter') {
-              setQuery(term);
-              setOffset(0);
-            }
-          }}
-        />
+        <Box style={{ flex: '1 1 200px', minWidth: 0 }}>
+          <SearchField
+            label="搜索关键词筛选"
+            placeholder="查找搜索词"
+            value={term}
+            onChange={setTerm}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                setQuery(term);
+                setOffset(0);
+              }
+            }}
+          />
+        </Box>
         {!instanceId ? (
           <Select
-            aria-label="实例筛选"
             placeholder="全部实例"
-            clearable
-            data={(instances.data || []).map((i) => ({
-              value: i.id,
-              label: i.name,
-            }))}
-            value={instance || null}
             onChange={(v) => {
               setInstance(v || '');
               setOffset(0);
             }}
+            options={[
+              { value: '', label: '全部实例' },
+              ...(instances.data || []).map((i) => ({
+                value: i.id,
+                label: i.name,
+              })),
+            ]}
+            label="实例筛选"
+            value={(instance || null) ?? ''}
           />
         ) : null}
         <Select
-          aria-label="请求来源筛选"
           placeholder="全部来源"
-          clearable
-          data={[
-            { value: 'public', label: '网站搜索' },
-            { value: 'admin', label: '管理页搜索' },
-          ]}
-          value={source || null}
           onChange={(v) => {
             setSource(v || '');
             setOffset(0);
           }}
+          options={[
+            { value: '', label: '全部来源' },
+            { value: 'public', label: '网站搜索' },
+            { value: 'admin', label: '管理页搜索' },
+          ]}
+          label="请求来源筛选"
+          value={(source || null) ?? ''}
         />
         <Button
-          variant="default"
           onClick={() => {
             setQuery(term);
             setOffset(0);
           }}
+          variant="secondary"
         >
           筛选
         </Button>
@@ -127,8 +132,8 @@ export default function History({
       ) : (
         <>
           <Paper withBorder>
-            <Table.ScrollContainer minWidth={850}>
-              <Table horizontalSpacing="lg" verticalSpacing="lg">
+            <Table.ScrollContainer minWidth={640}>
+              <Table>
                 <Table.Thead>
                   <Table.Tr>
                     <Table.Th>关键词 / 索引</Table.Th>
@@ -147,8 +152,8 @@ export default function History({
                     >
                       <Table.Td>
                         <UnstyledButton
-                          className="table-text-action"
                           onClick={() => setSelected(e)}
+                          variant="link"
                         >
                           {e.query || '空关键词'}
                         </UnstyledButton>
@@ -163,10 +168,7 @@ export default function History({
                         </Text>
                       </Table.Td>
                       <Table.Td>
-                        <Badge
-                          variant="light"
-                          color={e.status >= 400 ? 'red' : 'teal'}
-                        >
+                        <Badge tone={e.status >= 400 ? 'danger' : 'success'}>
                           {e.status}
                         </Badge>
                       </Table.Td>
@@ -191,17 +193,20 @@ export default function History({
             </Text>
             <Pagination
               total={Math.max(1, Math.ceil(q.data.total / 50))}
-              value={Math.floor(offset / 50) + 1}
-              onChange={(page) => setOffset((page - 1) * 50)}
+              page={Math.floor(offset / 50) + 1}
+              onPageChange={(page) => setOffset((page - 1) * 50)}
+              pageSize={1}
+              showSummary={false}
+              compact={true}
             />
           </Group>
         </>
       )}
       <Drawer
-        opened={!!selected}
         onClose={() => setSelected(null)}
         title="请求详情"
         size="lg"
+        open={!!selected}
       >
         <Stack>
           <Text size="sm" c="dimmed">

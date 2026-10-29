@@ -1,6 +1,6 @@
 # OneSearch 系统设计
 
-版本：0.1，2026-10-03。前端参考 Moment，后端 Go；本地使用真实原生进程，服务器使用 Docker。接口契约见 [API 文档](api.md)，部署与限制见 [服务器部署](deployment.md)。
+版本：0.2，2026-10-29。前端统一使用 OneUI 蓝白主题，后端 Go；本地使用真实原生进程，服务器使用 Docker。接口契约见 [API 文档](api.md)，部署与限制见 [服务器部署](deployment.md)。
 
 ## 1. 架构与信任边界
 
@@ -26,7 +26,7 @@ flowchart LR
 
 | 部分 | 当前选择 | 理由 |
 | --- | --- | --- |
-| 前端 | React 19、Mantine 8、React Router、TanStack Query、Vite | 与 Moment 体系一致，支持独立 dev 和按页加载 |
+| 前端 | React 19、OneUI、React Router、TanStack Query、Vite | 统一组件与主题，支持独立 dev 和按页加载 |
 | API | Go 1.26，net/http ServeMux | 接口范围清晰，便于运行时与协议测试 |
 | 平台数据库 | modernc SQLite，WAL，单连接 | 本地部署简单，平台数据一致性明确 |
 | 密码 | bcrypt | 服务端单向哈希，限制密码字节数 |
@@ -38,9 +38,9 @@ flowchart LR
 
 运行数据均在 `data/`：数据库、加密密钥、托管实例数据和备份。禁止提交到版本库。
 
-## 3. 页面结构与 Moment 迁移
+## 3. 页面结构与 OneUI 组件
 
-全局侧栏：工作台、可折叠的搜索实例树、备份、账户设置。移除只展示运行信息的平台设置页面和工作空间 DEV 标签。实例树列出实例及索引，点击索引直接进入文档页。底部使用 Moment 的浅色/深色/系统分段切换和头像账户菜单；账户菜单提供“账户设置”“退出登录”。
+全局侧栏：工作台、可折叠的搜索实例树、备份、账户设置。移除只展示运行信息的平台设置页面和工作空间 DEV 标签。实例树列出实例及索引，点击索引直接进入文档页。底部使用 OneUI 的浅色/深色/系统分段切换和头像账户菜单；账户菜单提供“账户设置”“退出登录”。
 
 账户设置：左侧分项导航、右侧内容卡片。分项为账户资料、登录安全、修改密码、登录会话、审计日志。去掉审计日志的重复大标题。dev 账户资料只展示真实用户名，不提供没有后端支持的虚构资料字段。
 
@@ -50,7 +50,9 @@ flowchart LR
 
 工作台采用 GitHub Calendar 风格的每日请求热力图，按 UTC 日期汇总真实请求。实例统计提供近 7/30 天请求量、成功率、平均耗时、IP、请求趋势和热门搜索词。每日聚合独立保留 400 天，原始请求保留 30 天；记录开始前显示未记录，不制造历史活动。
 
-迁移的设计基础包括：victoria 主题色、输入框背景与焦点环、标签间距、圆角、菜单和弹窗动效、主题分段组件、通用分段选项、Toggle 原始组件及账户导航。原生滚动容器和 Mantine ScrollArea 统一为 8px 圆角滚动条，迁移 Moment 的深浅色、悬停样式和 Chromium/Firefox 兼容规则。只迁移 UI 所需实现；不修改 Moment 工作区。
+所有交互控件直接来自 `@robert-stackflow/oneui`。普通选择使用 Select，可搜索索引选择使用现有 Combobox，搜索栏使用 SearchField，统计使用 Statistic，详情元数据使用 Descriptions。Toast、AuthLayout、Dialog、SessionItem、PasskeyItem、Segmented、FilePicker、TagInput、NumberInput、SettingsLayout 和 ResourceCard 统一由 OneUI 提供。TableMarkup 复用原有 Table 样式；AppShell/SidebarNavigation 支持独立链接与行内展开按钮。实例详情按“概览、内容与搜索、接入与权限、运行记录”分组。
+
+不复制主题变量，不在应用样式中重写控件颜色、边框、阴影或字体。`web/src/styles.css` 只负责业务布局；组件外观在 OneUI 内维护并使用同一蓝色主题。普通正文使用前景色，辅助说明使用 muted；表头与卡片继承同一圆角。
 
 页面不放宣传语、没有实际价值的默认描述或营销卡片。保留错误、操作影响、备份范围及必要权限说明。网络请求有加载、错误、重试和空状态。
 

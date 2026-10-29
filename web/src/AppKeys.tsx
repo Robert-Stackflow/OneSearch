@@ -1,23 +1,24 @@
+import { IconButton as ActionIcon } from '@robert-stackflow/oneui/IconButton';
+import { Alert } from '@robert-stackflow/oneui/Alert';
+import { Badge } from '@robert-stackflow/oneui/Badge';
+import { Button } from '@robert-stackflow/oneui/Button';
+import {
+  Code,
+  Group,
+  Surface as Paper,
+  Stack,
+  Text,
+  Heading as Title,
+} from '@robert-stackflow/oneui/Layout';
+import { CopyButton } from '@robert-stackflow/oneui/CopyButton';
+import { Dialog as Modal } from '@robert-stackflow/oneui/Dialog';
+import { Select } from '@robert-stackflow/oneui/Select';
+import { TableMarkup as Table } from '@robert-stackflow/oneui/TableMarkup';
+import { Textarea } from '@robert-stackflow/oneui/Textarea';
+import { Input as TextInput } from '@robert-stackflow/oneui/Input';
+import { FormField } from '@robert-stackflow/oneui/FormField';
 import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import {
-  ActionIcon,
-  Alert,
-  Badge,
-  Button,
-  Code,
-  CopyButton,
-  Group,
-  Modal,
-  Paper,
-  Select,
-  Stack,
-  Table,
-  Text,
-  Textarea,
-  TextInput,
-  Title,
-} from '@mantine/core';
 import { Check, Copy, Plus, Settings2, Trash2 } from 'lucide-react';
 import {
   api,
@@ -29,7 +30,6 @@ import {
   type Page,
 } from './api';
 import { ErrorState, Loading } from './components';
-
 interface Application {
   appId: string;
   instanceId: string;
@@ -45,7 +45,13 @@ const readActions = [
   'tasks.get',
   'stats.get',
 ];
-const presets: Record<string, { label: string; actions: string[] }> = {
+const presets: Record<
+  string,
+  {
+    label: string;
+    actions: string[];
+  }
+> = {
   search: { label: 'Search API Key', actions: ['search'] },
   admin: {
     label: 'Admin API Key',
@@ -208,9 +214,9 @@ export default function AppKeys({
                 <CopyButton value={app.data.appId}>
                   {({ copied, copy }) => (
                     <ActionIcon
-                      variant="subtle"
-                      aria-label="复制 App ID"
                       onClick={copy}
+                      variant="ghost"
+                      label="复制 App ID"
                     >
                       {copied ? <Check size={16} /> : <Copy size={16} />}
                     </ActionIcon>
@@ -224,17 +230,15 @@ export default function AppKeys({
             )}
           </Stack>
           {app.data ? (
-            <Button
-              variant="default"
-              leftSection={<Settings2 size={16} />}
-              onClick={() => void openChat()}
-            >
+            <Button onClick={() => void openChat()} variant="secondary">
+              {<Settings2 size={16} />}
               模型服务
             </Button>
           ) : (
             <Button
               loading={createApp.isPending}
               onClick={() => createApp.mutate()}
+              variant="primary"
             >
               创建应用
             </Button>
@@ -256,16 +260,17 @@ export default function AppKeys({
       <Group justify="space-between">
         <Title order={3}>App Key</Title>
         <Button
-          leftSection={<Plus size={16} />}
           disabled={!app.data}
           onClick={() => setOpened(true)}
+          variant="primary"
         >
+          {<Plus size={16} />}
           创建密钥
         </Button>
       </Group>
       <Paper withBorder>
-        <Table.ScrollContainer minWidth={700}>
-          <Table horizontalSpacing="xl" verticalSpacing="lg">
+        <Table.ScrollContainer minWidth={540}>
+          <Table>
             <Table.Thead>
               <Table.Tr>
                 <Table.Th>名称 / 类型</Table.Th>
@@ -292,9 +297,7 @@ export default function AppKeys({
                     <Table.Td>
                       <Group gap={5} maw={350}>
                         {key.actions.map((action) => (
-                          <Badge key={action} variant="light" size="xs">
-                            {action}
-                          </Badge>
+                          <Badge key={action}>{action}</Badge>
                         ))}
                       </Group>
                     </Table.Td>
@@ -305,10 +308,9 @@ export default function AppKeys({
                     </Table.Td>
                     <Table.Td>
                       <ActionIcon
-                        variant="subtle"
-                        color="gray"
-                        aria-label={`撤销密钥 ${key.name}`}
                         onClick={() => setRemove(key)}
+                        variant="ghost"
+                        label={`撤销密钥 ${key.name}`}
                       >
                         <Trash2 size={16} />
                       </ActionIcon>
@@ -327,10 +329,9 @@ export default function AppKeys({
         )}
       </Paper>
       <Modal
-        opened={opened}
         onClose={() => setOpened(false)}
         title="创建 App Key"
-        centered
+        open={opened}
       >
         <Stack>
           <TextInput
@@ -340,15 +341,17 @@ export default function AppKeys({
             onChange={(e) => setName(e.currentTarget.value)}
             placeholder="博客搜索"
           />
-          <Select
-            label="类型"
-            value={type}
-            onChange={(value) => setType(value || 'search')}
-            data={Object.entries(presets).map(([value, preset]) => ({
-              value,
-              label: preset.label,
-            }))}
-          />
+          <FormField label="类型">
+            <Select
+              label="类型"
+              onChange={(value) => setType(value || 'search')}
+              options={Object.entries(presets).map(([value, preset]) => ({
+                value,
+                label: preset.label,
+              }))}
+              value={type ?? ''}
+            />
+          </FormField>
           <Text size="xs" c="dimmed">
             {type === 'admin'
               ? '更新该应用的文档与搜索设置。仅放在服务器或发布流程中。'
@@ -358,25 +361,28 @@ export default function AppKeys({
                   ? '搜索与对话补全。使用前需配置模型服务。'
                   : '只允许搜索该应用的索引，可用于网站前端。'}
           </Text>
-          <Select
-            label="有效期"
-            value={expiry}
-            onChange={(value) => setExpiry(value || '30')}
-            data={[
-              { value: '7', label: '7 天' },
-              { value: '30', label: '30 天' },
-              { value: '90', label: '90 天' },
-              { value: 'never', label: '永久' },
-            ]}
-          />
+          <FormField label="有效期">
+            <Select
+              label="有效期"
+              onChange={(value) => setExpiry(value || '30')}
+              options={[
+                { value: '7', label: '7 天' },
+                { value: '30', label: '30 天' },
+                { value: '90', label: '90 天' },
+                { value: 'never', label: '永久' },
+              ]}
+              value={expiry ?? ''}
+            />
+          </FormField>
           <Group justify="flex-end" mt="sm">
-            <Button variant="default" onClick={() => setOpened(false)}>
+            <Button onClick={() => setOpened(false)} variant="secondary">
               取消
             </Button>
             <Button
               loading={createKey.isPending}
               disabled={!name.trim()}
               onClick={() => createKey.mutate()}
+              variant="primary"
             >
               创建密钥
             </Button>
@@ -384,10 +390,9 @@ export default function AppKeys({
         </Stack>
       </Modal>
       <Modal
-        opened={!!created}
         onClose={() => setCreated('')}
         title="保存 App Key"
-        centered
+        open={!!created}
       >
         <Stack>
           <Alert>
@@ -405,10 +410,8 @@ export default function AppKeys({
           </Code>
           <CopyButton value={created}>
             {({ copied, copy }) => (
-              <Button
-                leftSection={copied ? <Check size={16} /> : <Copy size={16} />}
-                onClick={copy}
-              >
+              <Button onClick={copy} variant="primary">
+                {copied ? <Check size={16} /> : <Copy size={16} />}
                 {copied ? '已复制' : '复制 App Key'}
               </Button>
             )}
@@ -416,34 +419,32 @@ export default function AppKeys({
         </Stack>
       </Modal>
       <Modal
-        opened={!!remove}
         onClose={() => setRemove(null)}
         title="撤销 App Key"
-        centered
+        open={!!remove}
       >
         <Text size="sm">使用此密钥的请求将立即失去访问权限。</Text>
         <Group justify="flex-end" mt="xl">
-          <Button variant="default" onClick={() => setRemove(null)}>
+          <Button onClick={() => setRemove(null)} variant="secondary">
             取消
           </Button>
           <Button
-            color="red"
             loading={revoke.isPending}
             onClick={() => revoke.mutate()}
+            variant="danger"
           >
             撤销密钥
           </Button>
         </Group>
       </Modal>
       <Modal
-        opened={chatOpened}
         onClose={() => {
           setChatOpened(false);
           setChatConfig('');
         }}
         title="模型服务"
-        size="lg"
-        centered
+        open={chatOpened}
+        size="large"
       >
         <Stack>
           <Text size="sm" c="dimmed">
@@ -454,22 +455,23 @@ export default function AppKeys({
             label="工作区配置"
             value={chatConfig}
             onChange={(e) => setChatConfig(e.currentTarget.value)}
-            minRows={10}
-            styles={{ input: { fontFamily: 'monospace' } }}
+            rows={10}
+            style={{ fontFamily: 'monospace' }}
           />
           <Group justify="flex-end">
             <Button
-              variant="default"
               onClick={() => {
                 setChatOpened(false);
                 setChatConfig('');
               }}
+              variant="secondary"
             >
               取消
             </Button>
             <Button
               loading={saveChat.isPending}
               onClick={() => saveChat.mutate()}
+              variant="primary"
             >
               保存配置
             </Button>

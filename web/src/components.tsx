@@ -1,16 +1,16 @@
+import { Alert } from '@robert-stackflow/oneui/Alert';
+import { Badge } from '@robert-stackflow/oneui/Badge';
+import { Button } from '@robert-stackflow/oneui/Button';
 import {
-  Alert,
-  Badge,
-  Button,
   Center,
-  Group,
-  Loader,
-  Paper,
+  Surface as Paper,
   Stack,
   Text,
-  Title,
-} from '@mantine/core';
+} from '@robert-stackflow/oneui/Layout';
+import { PageHeading } from '@robert-stackflow/oneui/Page';
+import { EmptyState } from '@robert-stackflow/oneui/EmptyState';
 import { SearchX } from 'lucide-react';
+import { LoadingState } from '@robert-stackflow/oneui/LoadingState';
 import type { ReactNode } from 'react';
 import { stateLabels } from './api';
 export function PageTitle({
@@ -25,34 +25,25 @@ export function PageTitle({
   titleExtra?: ReactNode;
 }) {
   return (
-    <Group justify="space-between" align="center" mb={28}>
-      <div>
-        <Group gap="lg">
-          <Title order={2}>{title}</Title>
-          {titleExtra}
-        </Group>
-        {description ? (
-          <Text c="dimmed" size="sm" mt={8}>
-            {description}
-          </Text>
-        ) : null}
-      </div>
-      {children}
-    </Group>
+    <PageHeading
+      title={title}
+      description={description}
+      titleExtra={titleExtra}
+      actions={children}
+    />
   );
 }
 export function Status({ value }: { value: string }) {
   return (
     <Badge
-      variant="light"
-      color={
+      tone={
         value === 'running' || value === 'succeeded'
-          ? 'teal'
+          ? 'success'
           : value === 'failed' || value === 'unhealthy'
-            ? 'red'
+            ? 'danger'
             : value === 'stopped' || value === 'archived'
-              ? 'gray'
-              : 'blue'
+              ? 'neutral'
+              : 'accent'
       }
     >
       {stateLabels[value] || value}
@@ -62,7 +53,7 @@ export function Status({ value }: { value: string }) {
 export function Loading() {
   return (
     <Center mih={240}>
-      <Loader aria-label="正在加载" />
+      <LoadingState showLabel={false} />
     </Center>
   );
 }
@@ -74,10 +65,10 @@ export function ErrorState({
   retry: () => unknown;
 }) {
   return (
-    <Alert title="暂时无法显示内容" color="red">
+    <Alert title="暂时无法显示内容" tone={'danger'}>
       <Stack gap="sm">
         <Text size="sm">{error.message}</Text>
-        <Button variant="light" color="red" onClick={() => void retry()}>
+        <Button onClick={() => void retry()} variant="danger">
           重试
         </Button>
       </Stack>
@@ -95,20 +86,13 @@ export function Empty({
   children?: ReactNode;
   embedded?: boolean;
 }) {
-  return (
-    <Paper withBorder={!embedded} p="xl" radius={embedded ? 0 : undefined}>
-      <Center mih={220}>
-        <Stack align="center" gap="md">
-          <SearchX size={34} strokeWidth={1.5} color="var(--os-muted)" />
-          <Title order={4}>{title}</Title>
-          {description ? (
-            <Text c="dimmed" size="sm" ta="center" maw={420}>
-              {description}
-            </Text>
-          ) : null}
-          {children}
-        </Stack>
-      </Center>
-    </Paper>
+  const content = (
+    <EmptyState
+      title={title}
+      description={description}
+      icon={<SearchX size={26} />}
+      action={children}
+    />
   );
+  return embedded ? content : <Paper>{content}</Paper>;
 }

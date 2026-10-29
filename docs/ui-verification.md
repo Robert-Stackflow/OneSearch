@@ -1,0 +1,11 @@
+# OneUI 界面验证
+
+2026-10-29：正式依赖固定为 npm 发布的 `@robert-stackflow/oneui@0.6.1`，锁文件解析到官方 registry，SHA-512 与最终测试候选一致。蓝白主题由 OneUI ThemeProvider 提供。应用使用原有 Select、Combobox、SearchField、Segmented、Statistic、Descriptions、Toast、SettingsLayout、SessionItem 和 PasskeyItem。通用资源卡片、登录布局、可展开导航和表格布局能力维护在 OneUI 中。
+
+- 实例列表、实例详情分组页、账户与安全、审计、历史、备份等 25 个桌面/窄屏页面检查未发现页面横向溢出、非法表格子元素或重复字段标签。
+- 修复布局组件边距被未定义值覆盖、表头内非法包装、表格圆角和链接字段对齐问题。
+- 验证可搜索索引选择、实例弹窗与分段切换、通行密钥弹窗，以及登录成功/失败与共享 Toast。安全相关写操作没有在视觉检查环境执行。
+- 左下角外观选择使用太阳、月亮、显示器图标，保留悬停说明和无障碍名称。
+- `npm run test:design` 检查应用不重新引入独立基础控件、旧组件库或组件视觉覆盖；`npm run build` 验证类型和生产构建。
+
+`npm run review:ui` 启动隔离的视觉检查环境（5179），使用确定性数据且拒绝写操作。真实开发入口使用 `npm run dev`，连接本地 Go 服务；视觉检查结果不代表真实搜索引擎和通行密钥注册的端到端验收。

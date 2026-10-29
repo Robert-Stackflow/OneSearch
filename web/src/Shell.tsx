@@ -1,46 +1,36 @@
+import { useColorScheme } from './Theme';
+import { Avatar } from '@robert-stackflow/oneui/Avatar';
+import { Menu } from '@robert-stackflow/oneui/Menu';
+import { lazy, Suspense, useEffect, useState } from 'react';
+import { AppShell } from '@robert-stackflow/oneui/AppShell';
+import { Segmented } from '@robert-stackflow/oneui/Segmented';
+import { Tooltip } from '@robert-stackflow/oneui/Tooltip';
 import {
-  ActionIcon,
-  Avatar,
-  Drawer,
-  Group,
-  Menu,
-  NavLink,
-  ScrollArea,
-  SegmentedControl,
-  Stack,
-  Text,
-  UnstyledButton,
-  useMantineColorScheme,
-} from '@mantine/core';
-import { useDisclosure } from '@mantine/hooks';
-import {
-  ArrowUpRight,
   Archive,
   Grid2X2,
   LogOut,
-  Monitor,
-  Moon,
-  PanelLeft,
   ChevronsUpDown,
   UserRound,
   Sun,
+  Moon,
+  Monitor,
 } from 'lucide-react';
-import {
-  Link,
-  NavLink as RouterLink,
-  Outlet,
-  useNavigate,
-} from 'react-router-dom';
+import { Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import InstanceTree from './InstanceTree';
-import { api, notifyError, type System, type AccountInfo } from './api';
-const items = [
-  { label: '工作台', path: '/', icon: Grid2X2 },
-  { label: '备份', path: '/backups', icon: Archive },
-  { label: '账户设置', path: '/account', icon: UserRound },
-];
-function Sidebar({ onNavigate }: { onNavigate: () => void }) {
-  const { colorScheme, setColorScheme } = useMantineColorScheme();
+import { useInstanceNavigation } from './InstanceTree';
+import { api, notifyError, type AccountInfo } from './api';
+const CreateInstance = lazy(() =>
+  import('./Instances').then((module) => ({ default: module.CreateInstance })),
+);
+function initialCollapsed() {
+  try {
+    return localStorage.getItem('onesearch-sidebar-collapsed') === 'true';
+  } catch {
+    return false;
+  }
+}
+function SidebarFooter() {
+  const { colorScheme, setColorScheme } = useColorScheme();
   const navigate = useNavigate();
   const cache = useQueryClient();
   const me = useQuery({
@@ -58,183 +48,168 @@ function Sidebar({ onNavigate }: { onNavigate: () => void }) {
     }
   }
   return (
-    <div className="sidebar-inner">
-      <Link to="/" className="brand" onClick={onNavigate}>
-        <img src="/mark.svg" width={36} height={36} alt="" />
-        <span>OneSearch</span>
-      </Link>
-      <ScrollArea className="sidebar-navigation">
-        <Stack gap={5}>
-          {items.slice(0, 1).map(({ label, path, icon: Icon }) => (
-            <NavLink
-              key={path}
-              component={RouterLink}
-              to={path}
-              end={path === '/'}
-              label={label}
-              leftSection={<Icon size={19} strokeWidth={1.7} />}
-              className="studio-nav"
-              onClick={onNavigate}
-            />
-          ))}
-          <InstanceTree onNavigate={onNavigate} />
-          {items.slice(1).map(({ label, path, icon: Icon }) => (
-            <NavLink
-              key={path}
-              component={RouterLink}
-              to={path}
-              label={label}
-              leftSection={<Icon size={19} strokeWidth={1.7} />}
-              className="studio-nav"
-              onClick={onNavigate}
-            />
-          ))}
-        </Stack>
-      </ScrollArea>
-      <div className="sidebar-bottom">
-        <a
-          className="docs-link"
-          href="https://www.meilisearch.com/docs"
-          target="_blank"
-          rel="noreferrer"
-        >
-          <span>Meilisearch 文档</span>
-          <ArrowUpRight size={15} />
-        </a>
-        <SegmentedControl
-          className="theme-switch"
-          aria-label="外观主题"
-          fullWidth
+    <div className="sidebar-footer">
+      <div className="sidebar-appearance">
+        <Segmented
+          label="外观主题"
           value={colorScheme}
-          onChange={(value) =>
-            setColorScheme(value as 'light' | 'dark' | 'auto')
-          }
-          data={[
+          onChange={setColorScheme}
+          options={[
             {
               value: 'light',
               label: (
-                <span className="theme-option">
-                  <Sun size={14} />
-                  浅色
-                </span>
+                <Tooltip content="浅色">
+                  <Sun
+                    size={16}
+                    role="img"
+                    aria-label="浅色"
+                    aria-hidden={false}
+                  />
+                </Tooltip>
               ),
             },
             {
               value: 'dark',
               label: (
-                <span className="theme-option">
-                  <Moon size={14} />
-                  深色
-                </span>
+                <Tooltip content="深色">
+                  <Moon
+                    size={16}
+                    role="img"
+                    aria-label="深色"
+                    aria-hidden={false}
+                  />
+                </Tooltip>
               ),
             },
             {
               value: 'auto',
               label: (
-                <span className="theme-option">
-                  <Monitor size={14} />
-                  系统
-                </span>
+                <Tooltip content="跟随系统">
+                  <Monitor
+                    size={16}
+                    role="img"
+                    aria-label="跟随系统"
+                    aria-hidden={false}
+                  />
+                </Tooltip>
               ),
             },
           ]}
         />
-        <Menu position="top-start" width={212} offset={10}>
-          <Menu.Target>
-            <UnstyledButton className="account-switch" aria-label="账户菜单">
-              <Avatar
-                src={me.data?.avatarUrl || undefined}
-                size={34}
-                radius={11}
-                color="victoria"
-              >
-                {(me.data?.name || username).slice(0, 1).toUpperCase()}
-              </Avatar>
-              <span className="account-label">
-                <Text fw={600} size="sm" truncate>
-                  {me.data?.name || username}
-                </Text>
-                <Text size="xs" c="dimmed" truncate>
-                  @{username}
-                </Text>
-              </span>
-              <ChevronsUpDown size={16} />
-            </UnstyledButton>
-          </Menu.Target>
-          <Menu.Dropdown>
-            <Menu.Label>账户</Menu.Label>
-            <Menu.Item
-              component={Link}
-              to="/account"
-              leftSection={<UserRound size={16} />}
-              onClick={onNavigate}
-            >
-              账户设置
-            </Menu.Item>
-            <Menu.Divider />
-            <Menu.Item
-              color="red"
-              leftSection={<LogOut size={16} />}
-              onClick={() => void logout()}
-            >
-              退出登录
-            </Menu.Item>
-          </Menu.Dropdown>
-        </Menu>
       </div>
+      <Menu
+        label="账户菜单"
+        variant="ghost"
+        className="account-switch"
+        trigger={
+          <>
+            <Avatar
+              name={me.data?.name || username}
+              src={me.data?.avatarUrl || undefined}
+              size={30}
+            />
+            <span className="account-label">{me.data?.name || username}</span>
+            <ChevronsUpDown className="account-chevron" size={14} />
+          </>
+        }
+        items={[
+          {
+            label: '账户设置',
+            icon: <UserRound size={16} />,
+            action: () => navigate('/account'),
+          },
+          {
+            label: 'Meilisearch 文档',
+            action: () => {
+              window.open(
+                'https://www.meilisearch.com/docs',
+                '_blank',
+                'noopener,noreferrer',
+              );
+            },
+          },
+          {
+            label: '退出登录',
+            icon: <LogOut size={16} />,
+            danger: true,
+            action: () => void logout(),
+          },
+        ]}
+      />
     </div>
   );
 }
 export default function Shell() {
-  const system = useQuery({
-    queryKey: ['system'],
-    queryFn: () => api<System>('/system'),
-    staleTime: 60000,
-  });
-  const [opened, { open, close }] = useDisclosure();
+  const navigate = useNavigate();
+  const location = useLocation();
+  const [collapsed, setCollapsed] = useState(initialCollapsed);
+  const [expanded, setExpanded] = useState<string[]>(['instances']);
+  const [createOpened, setCreateOpened] = useState(false);
+  const { navigation, active } = useInstanceNavigation(expanded, () =>
+    setCreateOpened(true),
+  );
+  useEffect(() => {
+    const id = location.pathname.match(/^\/instances\/([^/]+)/)?.[1];
+    if (id)
+      setExpanded((previous) => [...new Set([...previous, 'instances', id])]);
+  }, [location.pathname, location.search]);
   return (
-    <div className="studio-shell">
-      <aside className="studio-sidebar">
-        <Sidebar onNavigate={close} />
-      </aside>
-      <ActionIcon
-        className="mobile-toggle"
-        variant="default"
-        size={40}
-        aria-label="打开导航"
-        onClick={open}
+    <>
+      <AppShell
+        brandName="OneSearch"
+        brandIcon={<img src="/mark.svg" width={32} height={32} alt="" />}
+        title=""
+        collapsed={collapsed}
+        onCollapsedChange={(value) => {
+          setCollapsed(value);
+          try {
+            localStorage.setItem('onesearch-sidebar-collapsed', String(value));
+          } catch {
+            /* Storage can be unavailable in private contexts. */
+          }
+        }}
+        navigation={[
+          {
+            id: 'home',
+            path: '/',
+            label: '工作台',
+            icon: <Grid2X2 size={18} />,
+          },
+          navigation,
+          {
+            id: 'backups',
+            path: '/backups',
+            label: '备份',
+            icon: <Archive size={18} />,
+          },
+          {
+            id: 'account',
+            path: '/account',
+            label: '账户设置',
+            icon: <UserRound size={18} />,
+          },
+        ]}
+        active={
+          location.pathname === '/'
+            ? 'home'
+            : location.pathname.startsWith('/account')
+              ? 'account'
+              : location.pathname === '/backups'
+                ? 'backups'
+                : active
+        }
+        onNavigate={navigate}
+        expandedIds={expanded}
+        onExpandedChange={setExpanded}
+        sidebarFooter={<SidebarFooter />}
       >
-        <PanelLeft size={20} />
-      </ActionIcon>
-      <Drawer
-        opened={opened}
-        onClose={close}
-        size={270}
-        title="OneSearch"
-        padding={0}
-      >
-        <div style={{ height: 'calc(100dvh - 64px)' }}>
-          <Sidebar onNavigate={close} />
-        </div>
-      </Drawer>
-      <main className="studio-main">
-        <header className="topbar">
-          <Text size="xs" c="dimmed">
-            WORKSPACE / 搜索管理
-          </Text>
-          <Group gap={7}>
-            <span className="connection-dot" />
-            <Text size="xs" c="dimmed">
-              {system.data?.mode === 'production'
-                ? '服务已连接'
-                : '本地开发环境'}
-            </Text>
-          </Group>
-        </header>
-        <div className="page-content">
-          <Outlet />
-        </div>
-      </main>
-    </div>
+        <Outlet />
+      </AppShell>
+      {createOpened && (
+        <Suspense fallback={null}>
+          <CreateInstance opened onClose={() => setCreateOpened(false)} />
+        </Suspense>
+      )}
+    </>
   );
 }

@@ -1,25 +1,29 @@
+import { SearchField } from '@robert-stackflow/oneui/SearchField';
+import { Mark } from '@robert-stackflow/oneui/Layout';
+import { IconButton as ActionIcon } from '@robert-stackflow/oneui/IconButton';
+import { Badge } from '@robert-stackflow/oneui/Badge';
+import {
+  Button,
+  Button as UnstyledButton,
+} from '@robert-stackflow/oneui/Button';
+import {
+  Code,
+  Group,
+  Surface as Paper,
+  Stack,
+  Text,
+  Box,
+} from '@robert-stackflow/oneui/Layout';
+import { CopyButton } from '@robert-stackflow/oneui/CopyButton';
+import { FilePicker as FileInput } from '@robert-stackflow/oneui/FilePicker';
+import { Dialog as Modal } from '@robert-stackflow/oneui/Dialog';
+import { Pagination } from '@robert-stackflow/oneui/Pagination';
+import { Select } from '@robert-stackflow/oneui/Select';
+import { TableMarkup as Table } from '@robert-stackflow/oneui/TableMarkup';
+import { Textarea } from '@robert-stackflow/oneui/Textarea';
 import { useEffect, useState, type ReactNode } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import {
-  ActionIcon,
-  Badge,
-  Button,
-  Code,
-  CopyButton,
-  FileInput,
-  Group,
-  Modal,
-  Pagination,
-  Paper,
-  Select,
-  Stack,
-  Table,
-  Text,
-  TextInput,
-  Textarea,
-  UnstyledButton,
-} from '@mantine/core';
-import { Copy, Plus, Search, Trash2 } from 'lucide-react';
+import { Copy, Plus, Trash2 } from 'lucide-react';
 import {
   engine,
   notifyError,
@@ -29,7 +33,6 @@ import {
   type TaskRef,
 } from './api';
 import { Empty, ErrorState, Loading } from './components';
-
 type Document = Record<string, unknown>;
 interface SearchResponse {
   hits: Document[];
@@ -48,7 +51,6 @@ const text = (value: unknown): string =>
     : typeof value === 'object'
       ? JSON.stringify(value)
       : String(value);
-
 // Treat document content as text, never as HTML. Only our two delimiters create marks.
 function Highlight({ value }: { value: unknown }) {
   const parts: ReactNode[] = [];
@@ -60,9 +62,7 @@ function Highlight({ value }: { value: unknown }) {
     if (end < 0) break;
     parts.push(
       rest.slice(0, start),
-      <mark className="search-highlight" key={n++}>
-        {rest.slice(start + START.length, end)}
-      </mark>,
+      <Mark key={n++}>{rest.slice(start + START.length, end)}</Mark>,
     );
     rest = rest.slice(end + END.length);
   }
@@ -95,7 +95,6 @@ function snippets(document: Document) {
         ],
       ];
 }
-
 export default function Documents({
   id,
   uid,
@@ -219,35 +218,38 @@ export default function Documents({
             else setQuery(input.trim());
           }}
         >
-          <Group gap="sm">
-            <TextInput
-              aria-label="搜索文档"
-              placeholder="输入搜索词"
-              leftSection={<Search size={16} />}
-              value={input}
-              onChange={(e) => setInput(e.currentTarget.value)}
-            />
-            <Button type="submit" loading={query !== null && search.isFetching}>
+          <Group gap="sm" wrap="nowrap">
+            <Box style={{ flex: 1, minWidth: 0 }}>
+              <SearchField
+                label="搜索文档"
+                placeholder="输入搜索词"
+                value={input}
+                onChange={setInput}
+              />
+            </Box>
+            <Button
+              type="submit"
+              loading={query !== null && search.isFetching}
+              variant="primary"
+            >
               搜索
             </Button>
             {query !== null ? (
               <Button
-                variant="subtle"
                 onClick={() => {
                   setQuery(null);
                   setInput('');
                   setPage(1);
                 }}
+                variant="ghost"
               >
                 查看全部
               </Button>
             ) : null}
           </Group>
         </form>
-        <Button
-          leftSection={<Plus size={16} />}
-          onClick={() => setOpened(true)}
-        >
+        <Button onClick={() => setOpened(true)} variant="primary">
+          {<Plus size={16} />}
           导入 / 更新文档
         </Button>
       </Group>
@@ -259,9 +261,9 @@ export default function Documents({
         </Text>
         {query !== null && search.data ? (
           <Button
-            size="xs"
-            variant="subtle"
             onClick={() => setDetail(search.data)}
+            variant="ghost"
+            size="small"
           >
             查看搜索响应
           </Button>
@@ -285,12 +287,12 @@ export default function Documents({
             />
           ) : (
             <Table.ScrollContainer minWidth={580}>
-              <Table verticalSpacing="lg" horizontalSpacing="lg">
+              <Table>
                 <Table.Thead>
                   <Table.Tr>
                     <Table.Th>文档</Table.Th>
-                    <Table.Th w="25%">地址 / 主键</Table.Th>
-                    <Table.Th w={44} />
+                    <Table.Th w="35%">地址 / 主键</Table.Th>
+                    <Table.Th w={52} />
                   </Table.Tr>
                 </Table.Thead>
                 <Table.Tbody>
@@ -303,8 +305,8 @@ export default function Documents({
                       <Table.Tr key={text(d[primaryKey]) || n}>
                         <Table.Td>
                           <UnstyledButton
-                            className="table-text-action"
                             onClick={() => setDetail(d)}
+                            variant="link"
                           >
                             <Highlight
                               value={
@@ -337,8 +339,6 @@ export default function Documents({
                                 <Badge
                                   key={field}
                                   title={field}
-                                  size="xs"
-                                  variant="light"
                                   style={{ textTransform: 'none' }}
                                 >
                                   {(
@@ -368,10 +368,9 @@ export default function Documents({
                         <Table.Td>
                           {d[primaryKey] != null ? (
                             <ActionIcon
-                              variant="subtle"
-                              color="gray"
-                              aria-label={`删除文档 ${text(d.title ?? d[primaryKey])}`}
                               onClick={() => setRemove(text(d[primaryKey]))}
+                              variant="ghost"
+                              label={`删除文档 ${text(d.title ?? d[primaryKey])}`}
                             >
                               <Trash2 size={16} />
                             </ActionIcon>
@@ -386,20 +385,20 @@ export default function Documents({
           )}
           <Group justify="space-between" className="document-footer">
             <Group gap="xs">
-              <Select
-                aria-label="每页文档数量"
-                value={size}
-                onChange={(value) => {
-                  setSize(value || '20');
-                  setPage(1);
-                }}
-                data={['5', '10', '20', '50', '100'].map((value) => ({
-                  value,
-                  label: `${value} / 页`,
-                }))}
-                w={110}
-                size="xs"
-              />
+              <Box style={{ width: 110 }}>
+                <Select
+                  onChange={(value) => {
+                    setSize(value || '20');
+                    setPage(1);
+                  }}
+                  options={['5', '10', '20', '50', '100'].map((value) => ({
+                    value,
+                    label: `${value} / 页`,
+                  }))}
+                  label="每页文档数量"
+                  value={size ?? ''}
+                />
+              </Box>
               <Text size="xs" c="dimmed">
                 {total
                   ? `${(page - 1) * perPage + 1}–${Math.min(page * perPage, total)} / ${total}`
@@ -408,32 +407,25 @@ export default function Documents({
             </Group>
             <Pagination
               total={Math.max(1, pages)}
-              value={page}
-              onChange={setPage}
-              size="sm"
-              siblings={1}
-              getControlProps={(control) => ({
-                'aria-label': {
-                  next: '下一页',
-                  previous: '上一页',
-                  first: '第一页',
-                  last: '最后一页',
-                }[control],
-              })}
+              page={page}
+              onPageChange={setPage}
+              pageSize={1}
+              showSummary={false}
+              compact={true}
+              size="small"
             />
           </Group>
         </Paper>
       )}
       <Modal
-        opened={detail !== null}
         onClose={() => setDetail(null)}
         title={
           Array.isArray((detail as SearchResponse)?.hits)
             ? '搜索响应'
             : '文档与命中信息'
         }
-        size="xl"
-        centered
+        open={detail !== null}
+        size="large"
       >
         <Stack>
           <Group justify="space-between">
@@ -444,12 +436,8 @@ export default function Documents({
             </Text>
             <CopyButton value={JSON.stringify(detail, null, 2)}>
               {({ copy, copied }) => (
-                <Button
-                  size="xs"
-                  variant="default"
-                  leftSection={<Copy size={14} />}
-                  onClick={copy}
-                >
+                <Button onClick={copy} variant="secondary" size="small">
+                  {<Copy size={14} />}
                   {copied ? '已复制' : '复制 JSON'}
                 </Button>
               )}
@@ -461,11 +449,10 @@ export default function Documents({
         </Stack>
       </Modal>
       <Modal
-        opened={opened}
         onClose={() => setOpened(false)}
         title="导入或更新文档"
-        size="xl"
-        centered
+        open={opened}
+        size="large"
       >
         <Stack gap="lg">
           <Text size="sm" c="dimmed">
@@ -474,30 +461,33 @@ export default function Documents({
           <FileInput
             label="选择 JSON / NDJSON 文件"
             accept=".json,.jsonl,.ndjson"
-            onChange={async (file) => {
-              if (!file) return;
-              if (file.size > 16 * 1024 * 1024) {
-                notifyError(new Error('文件超过 16 MiB'));
-                return;
-              }
-              setJSON(await file.text());
-            }}
+            onFiles={(files) =>
+              (async (file) => {
+                if (!file) return;
+                if (file.size > 16 * 1024 * 1024) {
+                  notifyError(new Error('文件超过 16 MiB'));
+                  return;
+                }
+                setJSON(await file.text());
+              })(files[0])
+            }
           />
           <Textarea
             label="文档内容"
             value={json}
             onChange={(e) => setJSON(e.currentTarget.value)}
-            minRows={12}
-            styles={{ input: { fontFamily: 'monospace' } }}
+            rows={12}
+            style={{ fontFamily: 'monospace' }}
           />
           <Group justify="flex-end" className="form-actions">
-            <Button variant="default" onClick={() => setOpened(false)}>
+            <Button onClick={() => setOpened(false)} variant="secondary">
               取消
             </Button>
             <Button
               loading={importer.isPending}
               onClick={() => importer.mutate()}
               disabled={!json.trim()}
+              variant="primary"
             >
               写入索引
             </Button>
@@ -505,20 +495,19 @@ export default function Documents({
         </Stack>
       </Modal>
       <Modal
-        opened={remove !== null}
         onClose={() => setRemove(null)}
         title="删除文档"
-        centered
+        open={remove !== null}
       >
         <Text size="sm">将从索引删除这篇文档，源网站文件不会改变。</Text>
         <Group justify="flex-end" className="form-actions">
-          <Button variant="default" onClick={() => setRemove(null)}>
+          <Button onClick={() => setRemove(null)} variant="secondary">
             取消
           </Button>
           <Button
-            color="red"
             loading={deletion.isPending}
             onClick={() => deletion.mutate()}
+            variant="danger"
           >
             删除文档
           </Button>

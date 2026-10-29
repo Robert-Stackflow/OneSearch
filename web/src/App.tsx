@@ -1,3 +1,9 @@
+import { AuthLayout } from '@robert-stackflow/oneui/AuthLayout';
+import { Button } from '@robert-stackflow/oneui/Button';
+import { Divider } from '@robert-stackflow/oneui/Divider';
+import { Stack, Text } from '@robert-stackflow/oneui/Layout';
+import { PasswordField as PasswordInput } from '@robert-stackflow/oneui/PasswordField';
+import { Input as TextInput } from '@robert-stackflow/oneui/Input';
 import { lazy, Suspense, useState } from 'react';
 import {
   BrowserRouter,
@@ -7,16 +13,6 @@ import {
   useNavigate,
 } from 'react-router-dom';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import {
-  Button,
-  Divider,
-  Paper,
-  PasswordInput,
-  Stack,
-  Text,
-  TextInput,
-  Title,
-} from '@mantine/core';
 import { KeyRound, ArrowRight } from 'lucide-react';
 import { api, ApiError, notifyError } from './api';
 import { Loading, ErrorState } from './components';
@@ -33,7 +29,10 @@ const Backups = lazy(() => import('./Backups'));
 function Protected() {
   const q = useQuery({
     queryKey: ['me'],
-    queryFn: () => api<{ username: string }>('/auth/me'),
+    queryFn: () =>
+      api<{
+        username: string;
+      }>('/auth/me'),
   });
   if (q.isPending) return <Loading />;
   if (q.error)
@@ -54,7 +53,9 @@ function Login() {
   const cache = useQueryClient();
   const login = useMutation({
     mutationFn: () =>
-      api<{ requiresTwoFactor?: boolean }>('/auth/login', {
+      api<{
+        requiresTwoFactor?: boolean;
+      }>('/auth/login', {
         method: 'POST',
         body: JSON.stringify({ username: name, password, otp }),
       }),
@@ -86,94 +87,83 @@ function Login() {
     }
   }
   return (
-    <div className="login-page">
-      <div className="login-brand">
-        <img src="/mark.svg" width={52} height={52} alt="" />
-        <Title order={2}>OneSearch</Title>
-      </div>
-      <Paper withBorder p={32} w="100%" maw={430}>
-        <Title order={3} mb={6}>
-          {secondFactor ? '双因素身份验证' : '登录工作空间'}
-        </Title>
-        <form
-          onSubmit={(e) => {
-            e.preventDefault();
-            login.mutate();
-          }}
-        >
-          <Stack>
-            {!secondFactor ? (
-              <>
-                <TextInput
-                  label="用户名"
-                  autoComplete="username"
-                  required
-                  value={name}
-                  onChange={(e) => setName(e.currentTarget.value)}
-                />
-                <PasswordInput
-                  label="密码"
-                  autoComplete="current-password"
-                  required
-                  value={password}
-                  onChange={(e) => setPassword(e.currentTarget.value)}
-                />
-              </>
-            ) : (
-              <>
-                <Text size="sm" c="dimmed">
-                  正在验证 {name}
-                </Text>
-                <TextInput
-                  label="双因素验证码或恢复码"
-                  description="输入验证器中的验证码，或使用一次性恢复码"
-                  autoComplete="one-time-code"
-                  autoFocus
-                  required
-                  value={otp}
-                  onChange={(e) => setOTP(e.currentTarget.value)}
-                />
-              </>
-            )}
+    <AuthLayout
+      brandName="OneSearch"
+      brandIcon={<img src="/mark.svg" alt="" />}
+      title={secondFactor ? '双因素身份验证' : '登录'}
+    >
+      <form
+        onSubmit={(e) => {
+          e.preventDefault();
+          login.mutate();
+        }}
+      >
+        <Stack>
+          {!secondFactor ? (
+            <>
+              <TextInput
+                label="用户名"
+                autoComplete="username"
+                required
+                value={name}
+                onChange={(e) => setName(e.currentTarget.value)}
+              />
+              <PasswordInput
+                label="密码"
+                autoComplete="current-password"
+                required
+                value={password}
+                onChange={(e) => setPassword(e)}
+              />
+            </>
+          ) : (
+            <>
+              <Text size="sm" c="dimmed">
+                正在验证 {name}
+              </Text>
+              <TextInput
+                label="双因素验证码或恢复码"
+                autoComplete="one-time-code"
+                autoFocus
+                required
+                value={otp}
+                onChange={(e) => setOTP(e.currentTarget.value)}
+                hint="输入验证器中的验证码，或使用一次性恢复码"
+              />
+            </>
+          )}
+          <Button type="submit" loading={login.isPending} variant="primary">
+            {secondFactor ? '验证并登录' : '登录'}
+            {<ArrowRight size={16} />}
+          </Button>
+          {secondFactor ? (
             <Button
-              type="submit"
-              loading={login.isPending}
-              rightSection={<ArrowRight size={16} />}
+              disabled={login.isPending}
+              onClick={() => {
+                setSecondFactor(false);
+                setOTP('');
+                setPassword('');
+                login.reset();
+              }}
+              variant="ghost"
             >
-              {secondFactor ? '验证并登录' : '登录'}
+              返回密码登录
             </Button>
-            {secondFactor ? (
-              <Button
-                variant="subtle"
-                disabled={login.isPending}
-                onClick={() => {
-                  setSecondFactor(false);
-                  setOTP('');
-                  setPassword('');
-                  login.reset();
-                }}
-              >
-                返回密码登录
-              </Button>
-            ) : null}
-          </Stack>
-        </form>
-        <Divider label="或" my="lg" />
-        <Button
-          fullWidth
-          variant="default"
-          leftSection={<KeyRound size={16} />}
-          loading={passkeyBusy}
-          disabled={!window.PublicKeyCredential}
-          onClick={() => void passkey()}
-        >
-          使用通行密钥
-        </Button>
-      </Paper>
-      <Text size="xs" c="dimmed" mt="lg">
-        初始登录信息由部署管理员提供
-      </Text>
-    </div>
+          ) : null}
+        </Stack>
+      </form>
+      <Divider spacing={0} />
+      <Button
+        loading={passkeyBusy}
+        disabled={!window.PublicKeyCredential}
+        onClick={() => void passkey()}
+        variant="secondary"
+        style={{ width: '100%' }}
+      >
+        {<KeyRound size={16} />}
+        使用通行密钥
+      </Button>
+    </AuthLayout>
   );
 }
 export default function App() {

@@ -1,22 +1,21 @@
-import { Toggle as Switch } from './Toggle';
-import { useState, useRef, useLayoutEffect } from 'react';
-
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { SettingRow } from '@robert-stackflow/oneui/SettingRow';
+import { Button } from '@robert-stackflow/oneui/Button';
 import {
-  Button,
   Code,
   Group,
-  Modal,
-  Paper,
+  Surface as Paper,
   ScrollArea,
   Stack,
-  Table,
-  TagsInput,
   Text,
-  Textarea,
-  Title,
-} from '@mantine/core';
-
+  Heading as Title,
+} from '@robert-stackflow/oneui/Layout';
+import { Dialog as Modal } from '@robert-stackflow/oneui/Dialog';
+import { TableMarkup as Table } from '@robert-stackflow/oneui/TableMarkup';
+import { TagInput as TagsInput } from '@robert-stackflow/oneui/TagInput';
+import { Textarea } from '@robert-stackflow/oneui/Textarea';
+import { Toggle as Switch } from './Toggle';
+import { useState, useRef, useLayoutEffect } from 'react';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   api,
   engine,
@@ -29,7 +28,6 @@ import {
   type TaskRef,
 } from './api';
 import { ErrorState, Loading, Status } from './components';
-
 export function Settings({
   id,
   uid,
@@ -90,7 +88,11 @@ function SettingsForm({
     JSON.stringify(initial.synonyms || {}, null, 2),
   );
   const [typo, setTypo] = useState(
-    (initial.typoTolerance as { enabled: boolean })?.enabled ?? true,
+    (
+      initial.typoTolerance as {
+        enabled: boolean;
+      }
+    )?.enabled ?? true,
   );
   const [remove, setRemove] = useState(false);
   const cache = useQueryClient();
@@ -148,137 +150,95 @@ function SettingsForm({
         <Switch
           label="高级 JSON 编辑"
           checked={advanced}
-          onChange={(e) => setAdvanced(e.currentTarget.checked)}
+          onChange={setAdvanced}
         />
       </Group>
-      <Paper withBorder>
-        {advanced ? (
-          <div className="settings-body">
+      <Paper withBorder p="xl">
+        <Stack gap="xl">
+          {advanced ? (
             <Textarea
               label="完整索引配置"
-              minRows={22}
               value={text}
               onChange={(e) => setText(e.currentTarget.value)}
-              styles={{ input: { fontFamily: 'monospace' } }}
+              rows={22}
+              style={{ fontFamily: 'monospace' }}
             />
-          </div>
-        ) : (
-          <>
-            <div className="setting-row">
-              <div>
-                <Text fw={600} size="sm">
-                  可搜索字段
-                </Text>
-                <Text size="xs" c="dimmed" mt={6}>
-                  字段排列顺序影响相关性，通常将标题排在正文前。
-                </Text>
-              </div>
+          ) : (
+            <>
               <TagsInput
-                aria-label="可搜索字段"
+                label="可搜索字段"
+                hint="字段按相关性排序，通常将标题排在正文前。"
                 value={searchable}
                 onChange={setSearchable}
                 placeholder="title, content"
-                splitChars={[',']}
+                maxTagLength={2048}
+                caseSensitive
               />
-            </div>
-            <div className="setting-row">
-              <div>
-                <Text fw={600} size="sm">
-                  返回字段
-                </Text>
-                <Text size="xs" c="dimmed" mt={6}>
-                  网站搜索结果允许显示哪些字段。
-                </Text>
-              </div>
               <TagsInput
-                aria-label="返回字段"
+                label="返回字段"
+                hint="网站搜索结果允许显示的字段。"
                 value={displayed}
                 onChange={setDisplayed}
-                splitChars={[',']}
+                maxTagLength={2048}
+                caseSensitive
               />
-            </div>
-            <div className="setting-row">
-              <div>
-                <Text fw={600} size="sm">
-                  过滤与排序
-                </Text>
-                <Text size="xs" c="dimmed" mt={6}>
-                  为分类、标签或日期等字段启用筛选与排序。
-                </Text>
-              </div>
-              <Stack gap="sm">
-                <TagsInput
-                  label="可过滤字段"
-                  value={filterable}
-                  onChange={setFilterable}
-                  splitChars={[',']}
-                />
-                <TagsInput
-                  label="可排序字段"
-                  value={sortable}
-                  onChange={setSortable}
-                  splitChars={[',']}
-                />
-              </Stack>
-            </div>
-            <div className="setting-row">
-              <div>
-                <Text fw={600} size="sm">
-                  拼写容错
-                </Text>
-                <Text size="xs" c="dimmed" mt={6}>
-                  在输入存在拼写错误时，仍返回相关内容。
-                </Text>
-              </div>
-              <Switch
-                label="启用拼写容错"
-                checked={typo}
-                onChange={(e) => setTypo(e.currentTarget.checked)}
-              />
-            </div>
-            <div className="setting-row">
-              <div>
-                <Text fw={600} size="sm">
-                  停用词
-                </Text>
-                <Text size="xs" c="dimmed" mt={6}>
-                  忽略不影响搜索意义的词。
-                </Text>
-              </div>
               <TagsInput
-                aria-label="停用词"
+                label="可过滤字段"
+                hint="为分类、标签等字段启用筛选。"
+                value={filterable}
+                onChange={setFilterable}
+                maxTagLength={2048}
+                caseSensitive
+              />
+              <TagsInput
+                label="可排序字段"
+                value={sortable}
+                onChange={setSortable}
+                maxTagLength={2048}
+                caseSensitive
+              />
+              <SettingRow
+                title="拼写容错"
+                description="输入存在拼写错误时，仍返回相关内容。"
+                divider={false}
+              >
+                <Switch
+                  aria-label="启用拼写容错"
+                  checked={typo}
+                  onChange={setTypo}
+                />
+              </SettingRow>
+              <TagsInput
+                label="停用词"
+                hint="忽略不影响搜索意义的词。"
                 value={stopWords}
                 onChange={setStopWords}
-                splitChars={[',']}
+                maxTagLength={2048}
+                caseSensitive
               />
-            </div>
-            <div className="setting-row">
-              <div>
-                <Text fw={600} size="sm">
-                  同义词
-                </Text>
-                <Text size="xs" c="dimmed" mt={6}>
-                  JSON 对象，例如：{`{"LLM":["大语言模型"]}`}。
-                </Text>
-              </div>
               <Textarea
-                aria-label="同义词"
+                label="同义词"
+                hint={'JSON 对象，例如：{"LLM":["大语言模型"]}。'}
                 value={synonyms}
                 onChange={(e) => setSynonyms(e.currentTarget.value)}
-                minRows={4}
-                styles={{ input: { fontFamily: 'monospace' } }}
+                rows={4}
+                style={{ fontFamily: 'monospace' }}
               />
-            </div>
-          </>
-        )}
-        <div className="save-bar">
-          <Text c="dimmed" size="xs">
-            设置保存后会产生一个索引任务。
-          </Text>
-          <Button onClick={() => save.mutate()} loading={save.isPending}>
-            保存搜索设置
-          </Button>
-        </div>
+            </>
+          )}
+          <Group justify="space-between">
+            <Text c="dimmed" size="xs">
+              保存后会产生一个索引任务。
+            </Text>
+            <Button
+              onClick={() => save.mutate()}
+              loading={save.isPending}
+              variant="primary"
+            >
+              保存搜索设置
+            </Button>
+          </Group>
+        </Stack>
       </Paper>
       <Paper withBorder p="xl">
         <Group justify="space-between">
@@ -290,28 +250,27 @@ function SettingsForm({
               移除该索引及文档。请先保存备份或确保有可重新导入的源数据。
             </Text>
           </div>
-          <Button color="red" variant="light" onClick={() => setRemove(true)}>
+          <Button onClick={() => setRemove(true)} variant="danger">
             删除索引
           </Button>
         </Group>
       </Paper>
       <Modal
-        opened={remove}
         onClose={() => setRemove(false)}
         title={`删除 ${uid}`}
-        centered
+        open={remove}
       >
         <Text size="sm">
           该索引的文档和搜索设置都会被删除，此操作无法直接撤销。
         </Text>
         <Group justify="flex-end" mt="xl">
-          <Button variant="default" onClick={() => setRemove(false)}>
+          <Button onClick={() => setRemove(false)} variant="secondary">
             取消
           </Button>
           <Button
-            color="red"
             loading={del.isPending}
             onClick={() => del.mutate()}
+            variant="danger"
           >
             确认删除索引
           </Button>
@@ -336,7 +295,7 @@ export function Tasks({ id, indexUID }: { id: string; indexUID?: string }) {
   return (
     <Paper withBorder>
       <Table.ScrollContainer minWidth={600}>
-        <Table horizontalSpacing="xl" verticalSpacing="md">
+        <Table>
           <Table.Thead>
             <Table.Tr>
               <Table.Th>任务</Table.Th>
@@ -383,7 +342,10 @@ export function Logs({ id }: { id: string }) {
   const follow = useRef(true);
   const q = useQuery({
     queryKey: ['logs', id],
-    queryFn: () => api<{ text: string }>(`/instances/${id}/logs`),
+    queryFn: () =>
+      api<{
+        text: string;
+      }>(`/instances/${id}/logs`),
     refetchInterval: 5000,
   });
   useLayoutEffect(() => {
@@ -394,7 +356,11 @@ export function Logs({ id }: { id: string }) {
     <Paper withBorder p="xl">
       <Group justify="space-between" mb="lg">
         <Title order={3}>引擎运行日志</Title>
-        <Button size="xs" variant="default" onClick={() => void q.refetch()}>
+        <Button
+          onClick={() => void q.refetch()}
+          variant="secondary"
+          size="small"
+        >
           刷新
         </Button>
       </Group>
@@ -416,7 +382,7 @@ export function Logs({ id }: { id: string }) {
                 32;
           }}
         >
-          <pre className="log-output">{q.data.text}</pre>
+          <Code block>{q.data.text}</Code>
         </ScrollArea>
       )}
     </Paper>

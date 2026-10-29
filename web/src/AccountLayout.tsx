@@ -1,5 +1,5 @@
 import { Suspense } from 'react';
-import { NavLink, Paper } from '@mantine/core';
+import { SettingsLayout } from '@robert-stackflow/oneui/SettingsLayout';
 import {
   Fingerprint,
   KeyRound,
@@ -7,7 +7,7 @@ import {
   ShieldCheck,
   UserRound,
 } from 'lucide-react';
-import { NavLink as RouterLink, Outlet, useLocation } from 'react-router-dom';
+import { Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { Loading, PageTitle } from './components';
 const sections = [
   { path: '/account', label: '账户资料', icon: UserRound },
@@ -18,36 +18,30 @@ const sections = [
 ];
 export default function AccountLayout() {
   const { pathname } = useLocation();
+  const navigate = useNavigate();
   return (
     <>
       <PageTitle title="账户设置" />
-      <div className="settings-layout account-layout">
-        <Paper
-          component="nav"
-          aria-label="账户设置"
-          withBorder
-          p="xs"
-          className="settings-navigation account-navigation"
-        >
-          {sections.map(({ path, label, icon: Icon }) => (
-            <NavLink
-              key={path}
-              component={RouterLink}
-              to={path}
-              end
-              label={label}
-              leftSection={<Icon size={18} />}
-              active={pathname.replace(/\/$/, '') === path}
-              className="studio-nav"
-            />
-          ))}
-        </Paper>
+      <SettingsLayout
+        value={pathname.replace(/\/$/, '')}
+        onChange={navigate}
+        groups={[
+          {
+            id: 'account',
+            items: sections.map(({ path, label, icon: Icon }) => ({
+              value: path,
+              label,
+              icon: <Icon size={17} />,
+            })),
+          },
+        ]}
+      >
         <div className="account-content">
           <Suspense fallback={<Loading />}>
             <Outlet />
           </Suspense>
         </div>
-      </div>
+      </SettingsLayout>
     </>
   );
 }

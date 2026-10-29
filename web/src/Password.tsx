@@ -1,14 +1,10 @@
+import { Card } from '@robert-stackflow/oneui/Card';
+import { Button } from '@robert-stackflow/oneui/Button';
+import { Group, Stack } from '@robert-stackflow/oneui/Layout';
+import { PasswordField as PasswordInput } from '@robert-stackflow/oneui/PasswordField';
+import { Input as TextInput } from '@robert-stackflow/oneui/Input';
 import { useState } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import {
-  Button,
-  Group,
-  Paper,
-  PasswordInput,
-  Stack,
-  TextInput,
-  Title,
-} from '@mantine/core';
 import { api, notifyError, notifySuccess } from './api';
 export default function Password() {
   const [current, setCurrent] = useState('');
@@ -39,46 +35,43 @@ export default function Password() {
     onError: notifyError,
   });
   return (
-    <Paper withBorder className="account-panel">
-      <div className="account-panel-heading">
-        <Title order={3}>修改密码</Title>
-      </div>
+    <Card title="修改密码">
       <form
         onSubmit={(e) => {
           e.preventDefault();
           change.mutate();
         }}
       >
-        <Stack gap="lg" className="account-password-fields">
+        <Stack gap="lg">
           <PasswordInput
             label="当前密码"
             required
             autoComplete="current-password"
             value={current}
-            onChange={(e) => setCurrent(e.currentTarget.value)}
+            onChange={(e) => setCurrent(e)}
           />
           <PasswordInput
             label="新密码"
             required
             autoComplete="new-password"
-            description="12–72 字节"
             value={next}
-            onChange={(e) => setNext(e.currentTarget.value)}
+            hint="12–72 字节"
+            onChange={(e) => setNext(e)}
           />
           <PasswordInput
             label="确认新密码"
             required
             autoComplete="new-password"
             value={confirm}
-            onChange={(e) => setConfirm(e.currentTarget.value)}
-            error={confirm && confirm !== next ? '两次密码不一致' : null}
+            error={confirm && confirm !== next ? '两次密码不一致' : undefined}
+            onChange={(e) => setConfirm(e)}
           />
           <TextInput
             label="双因素验证码或恢复码"
-            description="已开启双因素认证时填写"
             autoComplete="one-time-code"
             value={otp}
             onChange={(e) => setOTP(e.currentTarget.value)}
+            hint="已开启双因素认证时填写"
           />
           <Group justify="flex-end" className="form-actions">
             <Button
@@ -89,12 +82,13 @@ export default function Password() {
                 next !== confirm
               }
               loading={change.isPending}
+              variant="primary"
             >
               修改密码
             </Button>
           </Group>
         </Stack>
       </form>
-    </Paper>
+    </Card>
   );
 }

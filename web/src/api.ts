@@ -1,4 +1,4 @@
-import { notifications } from '@mantine/notifications';
+import { toaster } from './toaster';
 export class ApiError extends Error {
   constructor(
     message: string,
@@ -34,14 +34,13 @@ export async function api<T>(path: string, init: RequestInit = {}): Promise<T> {
   return body.data as T;
 }
 export function notifyError(error: unknown) {
-  notifications.show({
-    title: '操作未完成',
-    message: error instanceof Error ? error.message : String(error),
-    color: 'red',
-  });
+  toaster.notify(
+    error instanceof Error ? error.message : String(error),
+    'error',
+  );
 }
 export function notifySuccess(message: string) {
-  notifications.show({ title: '已完成', message, color: 'teal' });
+  toaster.notify(message, 'success');
 }
 export interface AccountInfo {
   username: string;

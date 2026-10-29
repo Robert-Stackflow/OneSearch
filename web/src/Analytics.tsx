@@ -1,16 +1,20 @@
-import { useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { Statistic } from '@robert-stackflow/oneui/Statistic';
+import { Card } from '@robert-stackflow/oneui/Card';
+import { ContributionCalendar } from '@robert-stackflow/oneui/ContributionCalendar';
+import { BarChart } from '@robert-stackflow/oneui/BarChart';
 import {
   Group,
-  Paper,
-  Select,
+  Surface as Paper,
   SimpleGrid,
   Stack,
-  Table,
   Text,
-  Title,
-  Tooltip,
-} from '@mantine/core';
+  Heading as Title,
+  Box,
+} from '@robert-stackflow/oneui/Layout';
+import { Select } from '@robert-stackflow/oneui/Select';
+import { TableMarkup as Table } from '@robert-stackflow/oneui/TableMarkup';
+import { useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { Activity, Search, ShieldCheck, Timer } from 'lucide-react';
 import { api, formatDate, actionLabels, type Operation } from './api';
 import { Loading, ErrorState, Empty, Status } from './components';
@@ -34,104 +38,44 @@ interface Statistics {
   public: number;
   admin: number;
   uniqueIPs: number;
-  topQueries: { query: string; count: number }[];
+  topQueries: {
+    query: string;
+    count: number;
+  }[];
 }
 export function Calendar() {
   const q = useQuery({
     queryKey: ['calendar'],
     queryFn: () =>
-      api<{ days: Daily[]; since: string; timezone: string }>('/calendar'),
+      api<{
+        days: Daily[];
+        since: string;
+        timezone: string;
+      }>('/calendar'),
     refetchInterval: 15000,
   });
   if (q.isPending) return <Loading />;
   if (q.error) return <ErrorState error={q.error} retry={q.refetch} />;
   const days = q.data.days;
-  const firstWeekday = new Date(days[0].date + 'T00:00:00Z').getUTCDay();
-  const cells: (Daily | null)[] = [...Array(firstWeekday).fill(null), ...days];
-  const weeks = Array.from({ length: Math.ceil(cells.length / 7) }, (_, w) =>
-    Array.from({ length: 7 }, (_, d) => cells[w * 7 + d] || null),
-  );
-  const peak = Math.max(1, ...days.map((d) => d.requests));
-  const total = days.reduce((n, d) => n + d.requests, 0);
+  if (!days.length) return null;
+  const peak = Math.max(1, ...days.map((day) => day.requests));
   return (
-    <Paper withBorder p="xl" mb={28}>
-      <Group justify="space-between" mb="lg">
-        <Title order={3}>搜索活动</Title>
-        <Text size="sm" c="dimmed">
-          过去一年 · {total.toLocaleString()} 次请求
-        </Text>
-      </Group>
-      <div className="calendar-scroll">
-        <div className="calendar-labels">
-          <span>一</span>
-          <span>三</span>
-          <span>五</span>
-        </div>
-        <div className="calendar-weeks">
-          {weeks.map((week, w) => (
-            <div className="calendar-week" key={w}>
-              <span className="calendar-month">
-                {week
-                  .find((d) => d && (w === 0 || d.date.endsWith('-01')))
-                  ?.date.slice(5, 7)
-                  .replace(/^0/, '') || ''}
-                {week.some((d) => d && (w === 0 || d.date.endsWith('-01')))
-                  ? '月'
-                  : ''}
-              </span>
-              {week.map((d, n) => {
-                const known = d && d.date >= q.data.since;
-                const level =
-                  !d || !d.requests
-                    ? 0
-                    : Math.min(
-                        4,
-                        Math.max(1, Math.ceil((d.requests / peak) * 4)),
-                      );
-                return (
-                  <Tooltip
-                    key={n}
-                    label={
-                      d
-                        ? `${d.date} · ${known ? d.requests + ' 次请求' : '未记录'}（UTC）`
-                        : ''
-                    }
-                    disabled={!d}
-                    withArrow
-                  >
-                    <span
-                      className={`calendar-cell level-${level}${!known ? ' unknown' : ''}`}
-                      tabIndex={d ? 0 : undefined}
-                      aria-label={
-                        d
-                          ? `${d.date} ${known ? d.requests + ' 次请求' : '未记录'}`
-                          : undefined
-                      }
-                    />
-                  </Tooltip>
-                );
-              })}
-            </div>
-          ))}
-        </div>
-      </div>
-      <Group justify="space-between" mt="md">
-        <Text size="xs" c="dimmed">
-          {q.data.since} 起记录
-        </Text>
-        <Group gap={5}>
-          <Text size="xs" c="dimmed" mr={4}>
-            少
-          </Text>
-          {[0, 1, 2, 3, 4].map((n) => (
-            <span key={n} className={`calendar-cell level-${n}`} />
-          ))}
-          <Text size="xs" c="dimmed" ml={4}>
-            多
-          </Text>
-        </Group>
-      </Group>
-    </Paper>
+    <div className="dashboard-summary">
+      <ContributionCalendar
+        label="搜索活动"
+        unit="次请求"
+        color="var(--accent)"
+        data={days
+          .filter((day) => day.date >= q.data.since)
+          .map((day) => ({ date: day.date, count: day.requests }))}
+        startDate={days[0].date}
+        endDate={days[days.length - 1].date}
+        today={days[days.length - 1].date}
+        weekStartsOn={0}
+        emptyMode="missing"
+        thresholds={[peak / 4, peak / 2, (peak * 3) / 4, peak]}
+      />
+    </div>
   );
 }
 export function InstanceStats({ id }: { id: string }) {
@@ -157,35 +101,27 @@ export function InstanceStats({ id }: { id: string }) {
     },
     { label: '访问 IP', value: s.uniqueIPs, icon: Activity },
   ];
-  const peak = Math.max(1, ...s.days.map((d) => d.requests));
   return (
     <Stack gap="xl">
       <Group justify="space-between">
         <Title order={3}>统计</Title>
-        <Select
-          aria-label="统计周期"
-          data={[
-            { value: '7', label: '近 7 天' },
-            { value: '30', label: '近 30 天' },
-          ]}
-          value={period}
-          onChange={(v) => setPeriod(v || '30')}
-          w={130}
-        />
+        <Box style={{ width: 130 }}>
+          <Select
+            onChange={(v) => setPeriod(v || '30')}
+            options={[
+              { value: '7', label: '近 7 天' },
+              { value: '30', label: '近 30 天' },
+            ]}
+            label="统计周期"
+            value={period ?? ''}
+          />
+        </Box>
       </Group>
       <SimpleGrid cols={{ base: 2, xl: 4 }}>
         {metrics.map((m) => (
-          <Paper key={m.label} withBorder p="lg">
-            <Group justify="space-between">
-              <Text size="xs" c="dimmed">
-                {m.label}
-              </Text>
-              <m.icon size={17} color="var(--os-accent)" />
-            </Group>
-            <Text fz={26} fw={650} mt={12}>
-              {m.value}
-            </Text>
-          </Paper>
+          <Card key={m.label}>
+            <Statistic title={m.label} value={m.value} animate={false} />
+          </Card>
         ))}
       </SimpleGrid>
       <Paper withBorder p="xl">
@@ -200,27 +136,14 @@ export function InstanceStats({ id }: { id: string }) {
             </Text>
           </Group>
         </Group>
-        <div
-          className="request-bars"
-          role="img"
-          aria-label={`近 ${period} 天共 ${s.requests} 次搜索请求`}
-        >
-          {s.days.map((d) => (
-            <Tooltip
-              key={d.date}
-              label={`${d.date} · ${d.requests} 次（网站 ${d.public} / 管理页 ${d.admin}）`}
-              withArrow
-            >
-              <div className="request-bar-column">
-                <div
-                  className="request-bar"
-                  style={{ height: `${(d.requests / peak) * 132}px` }}
-                />
-                <span>{d.date.slice(5)}</span>
-              </div>
-            </Tooltip>
-          ))}
-        </div>
+        <BarChart
+          label={`近 ${period} 天共 ${s.requests} 次搜索请求`}
+          data={s.days.map((day) => ({
+            label: day.date.slice(5),
+            value: day.requests,
+            description: `${day.date} · ${day.requests} 次（网站 ${day.public} / 管理页 ${day.admin}）`,
+          }))}
+        />
         <Group mt="xl" gap="xl">
           <Text size="xs" c="dimmed">
             失败请求 {s.errors}
@@ -238,7 +161,7 @@ export function InstanceStats({ id }: { id: string }) {
           热门搜索词
         </Title>
         {s.topQueries.length ? (
-          <Table verticalSpacing="sm">
+          <Table>
             <Table.Thead>
               <Table.Tr>
                 <Table.Th>关键词</Table.Th>
@@ -276,7 +199,7 @@ export function InstanceOperations({ id }: { id: string }) {
   ) : (
     <Paper withBorder>
       <Table.ScrollContainer minWidth={580}>
-        <Table horizontalSpacing="xl" verticalSpacing="lg">
+        <Table>
           <Table.Thead>
             <Table.Tr>
               <Table.Th>操作</Table.Th>

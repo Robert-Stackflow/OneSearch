@@ -1,20 +1,21 @@
-import { useState } from 'react';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { Button } from '@robert-stackflow/oneui/Button';
 import {
-  Button,
   Group,
-  Modal,
-  NumberInput,
-  Paper,
-  PasswordInput,
+  Surface as Paper,
   SimpleGrid,
   Stack,
   Text,
-  TextInput,
-  Title,
-} from '@mantine/core';
+  Heading as Title,
+} from '@robert-stackflow/oneui/Layout';
+import { Dialog as Modal } from '@robert-stackflow/oneui/Dialog';
+import { NumberInput } from '@robert-stackflow/oneui/NumberInput';
+import { PasswordField as PasswordInput } from '@robert-stackflow/oneui/PasswordField';
+import { Input as TextInput } from '@robert-stackflow/oneui/Input';
+import { FormField } from '@robert-stackflow/oneui/FormField';
+import { useState } from 'react';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Toggle } from './Toggle';
-import { api, ApiError, notifyError, notifySuccess } from './api';
+import { api, ApiError, formatDate, notifyError, notifySuccess } from './api';
 import { ErrorState, Loading } from './components';
 interface Schedule {
   enabled: boolean;
@@ -45,7 +46,10 @@ function ScheduleForm({ settings }: { settings: Schedule }) {
   const cache = useQueryClient();
   const security = useQuery({
     queryKey: ['security'],
-    queryFn: () => api<{ totpEnabled: boolean }>('/security'),
+    queryFn: () =>
+      api<{
+        totpEnabled: boolean;
+      }>('/security'),
   });
   const save = useMutation({
     mutationFn: () =>
@@ -96,7 +100,7 @@ function ScheduleForm({ settings }: { settings: Schedule }) {
           <Toggle
             label="启用自动备份"
             checked={enabled}
-            onChange={(e) => setEnabled(e.currentTarget.checked)}
+            onChange={setEnabled}
           />
         </Group>
         <form
@@ -109,42 +113,48 @@ function ScheduleForm({ settings }: { settings: Schedule }) {
             <SimpleGrid cols={{ base: 1, sm: 2 }}>
               <TextInput
                 label="每日执行时间"
-                description="北京时间；每天最多执行一次"
                 type="time"
                 required
                 value={time}
                 onChange={(e) => setTime(e.currentTarget.value)}
+                hint="北京时间；每天最多执行一次"
               />
-              <NumberInput
+              <FormField
                 label="保留份数"
-                description="平台及每个实例分别保留成功备份；手动备份不清理"
-                min={1}
-                max={100}
+                hint="平台及每个实例分别保留成功备份；手动备份不清理"
                 required
-                value={keep}
-                onChange={setKeep}
-              />
+              >
+                <NumberInput
+                  label="保留份数"
+                  min={1}
+                  max={100}
+                  required
+                  onChange={setKeep}
+                  hint="平台及每个实例分别保留成功备份；手动备份不清理"
+                  value={Number(keep)}
+                />
+              </FormField>
             </SimpleGrid>
             <Toggle
               label="同时备份运行中的实例数据"
               checked={dumps}
-              onChange={(e) => setDumps(e.currentTarget.checked)}
+              onChange={setDumps}
             />
             <PasswordInput
               label={settings.hasPassword ? '更新备份密码' : '备份密码'}
-              description={
+              autoComplete="new-password"
+              value={password}
+              hint={
                 settings.hasPassword
                   ? '留空保留现有密码'
                   : '至少 12 位，请单独保存，恢复时需要'
               }
-              autoComplete="new-password"
-              value={password}
-              onChange={(e) => setPassword(e.currentTarget.value)}
+              onChange={(e) => setPassword(e)}
             />
             <Group justify="space-between">
               <Text size="xs" c="dimmed">
                 {settings.lastRun
-                  ? `最近执行日期 ${settings.lastRun}`
+                  ? `最近执行日期 ${formatDate(settings.lastRun)}`
                   : '尚未执行自动备份'}
               </Text>
               <Button
@@ -153,6 +163,7 @@ function ScheduleForm({ settings }: { settings: Schedule }) {
                 disabled={
                   enabled && !settings.hasPassword && password.length < 12
                 }
+                variant="primary"
               >
                 保存设置
               </Button>
@@ -161,14 +172,13 @@ function ScheduleForm({ settings }: { settings: Schedule }) {
         </form>
       </Paper>
       <Modal
-        opened={verifyOpen}
         onClose={() => {
           setVerifyOpen(false);
           setCurrentPassword('');
           setOTP('');
         }}
         title="验证身份"
-        centered
+        open={verifyOpen}
       >
         <form
           onSubmit={(e) => {
@@ -181,7 +191,7 @@ function ScheduleForm({ settings }: { settings: Schedule }) {
               label="当前密码"
               required
               value={currentPassword}
-              onChange={(e) => setCurrentPassword(e.currentTarget.value)}
+              onChange={(e) => setCurrentPassword(e)}
             />
             {security.data?.totpEnabled ? (
               <TextInput
@@ -192,10 +202,14 @@ function ScheduleForm({ settings }: { settings: Schedule }) {
               />
             ) : null}
             <Group justify="flex-end">
-              <Button variant="default" onClick={() => setVerifyOpen(false)}>
+              <Button onClick={() => setVerifyOpen(false)} variant="secondary">
                 取消
               </Button>
-              <Button type="submit" loading={verify.isPending}>
+              <Button
+                type="submit"
+                loading={verify.isPending}
+                variant="primary"
+              >
                 验证并保存
               </Button>
             </Group>

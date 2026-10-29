@@ -1,6 +1,6 @@
 # OneSearch
 
-管理多个 Meilisearch 实例的控制台。前端使用 React、Mantine 和 TanStack Query，界面参考并迁移 Moment 的主题、分段切换、账户布局和表单样式；后端使用 Go、SQLite。
+管理多个 Meilisearch 实例的控制台。前端使用 React、OneUI 和 TanStack Query，统一使用 OneUI 蓝白主题、导航、表单与账户组件；后端使用 Go、SQLite。
 
 支持本地 dev 和服务器 Docker 两种模式。本地实例运行在真实 Meilisearch 进程中；服务器通过 Docker 管理独立引擎容器，由 Go 同时提供前端和 API。
 

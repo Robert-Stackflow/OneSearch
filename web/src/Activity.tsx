@@ -1,5 +1,12 @@
+import { Alert } from '@robert-stackflow/oneui/Alert';
+import {
+  Code,
+  Surface as Paper,
+  Stack,
+  Text,
+} from '@robert-stackflow/oneui/Layout';
+import { TableMarkup as Table } from '@robert-stackflow/oneui/TableMarkup';
 import { useQuery } from '@tanstack/react-query';
-import { Alert, Code, Paper, Stack, Table, Text } from '@mantine/core';
 import {
   api,
   formatDate,
@@ -87,13 +94,13 @@ export default function Activity({
         <Paper withBorder p="xl">
           <Stack>
             <Text fw={600}>本地开发环境</Text>
-            <Text size="sm">Go API · React / Mantine · SQLite</Text>
+            <Text size="sm">Go API · React / OneUI · SQLite</Text>
             <Text size="sm">Meilisearch：{s.engineVersion || '未配置'}</Text>
             <Text size="sm">
               通行密钥站点：<Code>{s.origin}</Code>
             </Text>
             <Text size="sm">搜索历史保留：30 天；IP 使用实际连接地址。</Text>
-            <Alert color="blue">
+            <Alert tone={'info'}>
               实例以真实本地进程运行。服务器 Docker
               运行时、定时异地备份和升级编排将按设计文档另行实现。
             </Alert>
@@ -113,7 +120,7 @@ export default function Activity({
       ) : (
         <Paper withBorder>
           <Table.ScrollContainer minWidth={embedded ? 560 : 660}>
-            <Table horizontalSpacing="xl" verticalSpacing="lg">
+            <Table>
               <Table.Thead>
                 <Table.Tr>
                   <Table.Th>操作</Table.Th>
@@ -128,7 +135,7 @@ export default function Activity({
                 {rows.map((r) => (
                   <Table.Tr key={r.id}>
                     <Table.Td>
-                      <Text size="sm" fw={600}>
+                      <Text size="sm" fw={500}>
                         {auditAction(r.action)}
                       </Text>
                       {r.message ? (
